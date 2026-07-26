@@ -7,6 +7,7 @@ Standalone, offline browser application for creating, reviewing, tracing, and as
 - Vite + React + TypeScript
 - Tailwind CSS
 - Zustand
+- TanStack Table (sortable / filterable / resizable / hideable data tables)
 - IndexedDB (`idb`) for local working autosave
 - DOMPurify for rich-text sanitization
 

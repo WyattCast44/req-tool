@@ -218,8 +218,10 @@
 
   .data-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 0.78rem;
+    table-layout: fixed;
   }
 
   .data-table th {
@@ -231,16 +233,22 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--color-ink-muted);
-    padding: 0.35rem 0.5rem;
+    padding: 0.3rem 0.45rem;
     border-bottom: 1px solid var(--color-line-strong);
+    border-right: 1px solid #dce2e9;
     white-space: nowrap;
     z-index: 1;
+    overflow: hidden;
   }
 
   .data-table td {
-    padding: 0.28rem 0.5rem;
+    padding: 0.28rem 0.45rem;
     border-bottom: 1px solid #e7ebf0;
+    border-right: 1px solid #eef1f4;
     vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .data-table tr:hover td {
@@ -249,6 +257,64 @@
 
   .data-table tr.selected td {
     background: var(--color-accent-soft);
+  }
+
+  .data-table-resizable {
+    min-width: 100%;
+  }
+
+  .header-sort-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-sort-btn.sortable {
+    cursor: pointer;
+  }
+
+  .header-sort-btn.sortable:hover {
+    color: var(--color-accent);
+  }
+
+  .header-sort-btn:disabled {
+    cursor: default;
+  }
+
+  .column-filter-input {
+    font-size: 0.68rem !important;
+    padding: 0.15rem 0.3rem !important;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+  }
+
+  .col-resizer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 5px;
+    cursor: col-resize;
+    user-select: none;
+    touch-action: none;
+    background: transparent;
+  }
+
+  .col-resizer:hover,
+  .col-resizer.is-resizing {
+    background: var(--color-accent);
   }
 
   .mono {

@@ -1,9 +1,23 @@
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import type { ColumnDef } from '@tanstack/react-table'
 import { useProjectStore } from '../store/projectStore'
 import { EmptyState } from '../components/EmptyState'
 import { ConfirmDialog } from '../components/Modal'
-import { useState } from 'react'
+import { DataTable } from '../components/DataTable'
+import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { formatDateTime } from '../lib/ids'
+import type { SavedView } from '../types/project'
+
+interface ViewRow {
+  id: string
+  name: string
+  searchQuery: string
+  tagLogic: string
+  modifiedAt: string
+  modifiedAtRaw: string
+  view: SavedView
+}
 
 export function SavedViewsPage() {
   const navigate = useNavigate()
@@ -14,9 +28,100 @@ export function SavedViewsPage() {
   const deleteSavedView = useProjectStore((s) => s.deleteSavedView)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
+  const rows = useMemo<ViewRow[]>(
+    () =>
+      project.savedViews.map((view) => ({
+        id: view.id,
+        name: view.name,
+        searchQuery: view.searchQuery || '',
+        tagLogic: view.tagLogic,
+        modifiedAt: formatDateTime(view.modifiedAt),
+        modifiedAtRaw: view.modifiedAt,
+        view,
+      })),
+    [project.savedViews],
+  )
+
+  const columns = useMemo<ColumnDef<ViewRow>[]>(() => {
+    const defs: ColumnDef<ViewRow>[] = [
+      {
+        accessorKey: 'name',
+        header: 'Name',
+        cell: ({ getValue }) => <span className="font-semibold">{getValue<string>()}</span>,
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.name, value),
+        size: 200,
+      },
+      {
+        accessorKey: 'searchQuery',
+        header: 'Search',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.searchQuery, value),
+        size: 180,
+      },
+      {
+        accessorKey: 'tagLogic',
+        header: 'Tag logic',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.tagLogic, value),
+        size: 100,
+      },
+      {
+        accessorKey: 'modifiedAt',
+        header: 'Modified',
+        sortingFn: (a, b) => a.original.modifiedAtRaw.localeCompare(b.original.modifiedAtRaw),
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.modifiedAt, value),
+        size: 160,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              className="btn btn-secondary px-1.5 py-0.5 text-[0.68rem]"
+              onClick={() => {
+                applySavedView(row.original.id)
+                navigate('/requirements')
+              }}
+            >
+              Apply
+            </button>
+            {mode === 'edit' && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem]"
+                  onClick={() => {
+                    const name = window.prompt('Rename view', row.original.name)
+                    if (!name?.trim()) return
+                    upsertSavedView({ ...row.original.view, name: name.trim() })
+                  }}
+                >
+                  Rename
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem] text-[var(--color-danger)]"
+                  onClick={() => setDeleteId(row.original.id)}
+                >
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+        ),
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableHiding: false,
+        size: 180,
+      },
+    ]
+    return defs
+  }, [applySavedView, mode, navigate, upsertSavedView])
+
   return (
     <div className="space-y-2.5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="page-header">
         <div>
           <h2 className="page-title">Saved Views</h2>
           <p className="page-subtitle">
@@ -41,65 +146,14 @@ export function SavedViewsPage() {
       {project.savedViews.length === 0 ? (
         <EmptyState title="No saved views" body="Create a saved view from the Requirements filters while in Edit Mode." />
       ) : (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Search</th>
-                <th>Tag logic</th>
-                <th>Modified</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {project.savedViews.map((view) => (
-                <tr key={view.id}>
-                  <td className="font-semibold">{view.name}</td>
-                  <td>{view.searchQuery || '—'}</td>
-                  <td>{view.tagLogic}</td>
-                  <td>{formatDateTime(view.modifiedAt)}</td>
-                  <td>
-                    <div className="flex flex-wrap gap-1">
-                      <button
-                        type="button"
-                        className="btn btn-secondary px-2 py-1 text-xs"
-                        onClick={() => {
-                          applySavedView(view.id)
-                          navigate('/requirements')
-                        }}
-                      >
-                        Apply
-                      </button>
-                      {mode === 'edit' && (
-                        <>
-                          <button
-                            type="button"
-                            className="btn btn-ghost px-2 py-1 text-xs"
-                            onClick={() => {
-                              const name = window.prompt('Rename view', view.name)
-                              if (!name?.trim()) return
-                              upsertSavedView({ ...view, name: name.trim() })
-                            }}
-                          >
-                            Rename
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost px-2 py-1 text-xs text-[var(--color-danger)]"
-                            onClick={() => setDeleteId(view.id)}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          data={rows}
+          columns={columns}
+          getRowId={(row) => row.id}
+          pageSize={50}
+          sizingStorageKey="saved-views"
+          emptyMessage="No saved views match the current column filters."
+        />
       )}
 
       <ConfirmDialog
