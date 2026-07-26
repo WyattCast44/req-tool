@@ -39,7 +39,7 @@ export function LookupsPage() {
   if (!editing) {
     return (
       <div className="space-y-2.5">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Lookups & Tags</h2>
+        <h2 className="page-title">Lookups & Tags</h2>
         <div className="panel p-4 text-sm">
           Lookup and tag management is available only in Edit Mode. Enter Edit Mode to create, rename, or delete
           controlled values.
