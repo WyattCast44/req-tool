@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "smoke": "node scripts/smoke-validate.mjs"
+    "smoke": "node scripts/smoke-validate.mjs",
+    "generate:example": "node scripts/generate-example-otreq.mjs"
   },
   "dependencies": {
     "dompurify": "^3.4.12",

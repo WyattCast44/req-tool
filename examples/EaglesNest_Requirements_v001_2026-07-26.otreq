@@ -1,0 +1,1392 @@
+{
+  "formatId": "otreq-project",
+  "schemaVersion": 1,
+  "applicationVersion": "1.0.0",
+  "metadata": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "name": "EaglesNest OT Requirements",
+    "description": "Example operational test requirements project for import testing. Contains representative statuses, relationships, activities, evidence paths, and assessments.",
+    "classificationBanner": "UNCLASSIFIED // DEMO DATA — FOR TRAINING USE ONLY",
+    "createdAt": "2026-07-20T14:30:00.000Z",
+    "modifiedAt": "2026-07-25T16:45:00.000Z",
+    "exportSequence": 1,
+    "lastExportedAt": "2026-07-25T16:45:00.000Z",
+    "lastExportEditor": "A. Rivera",
+    "schemaVersion": 1,
+    "applicationVersion": "1.0.0",
+    "editorNameDefault": "A. Rivera"
+  },
+  "lookups": {
+    "statuses": [
+      {
+        "id": "00000000-0000-4000-8000-000000000101",
+        "value": "Draft",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000102",
+        "value": "Active",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000103",
+        "value": "Needs Review",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000104",
+        "value": "Superseded",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000105",
+        "value": "Retired",
+        "active": true,
+        "sortOrder": 5,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000106",
+        "value": "Rejected",
+        "active": true,
+        "sortOrder": 6,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000107",
+        "value": "Out of Scope",
+        "active": true,
+        "sortOrder": 7,
+        "system": true
+      }
+    ],
+    "types": [
+      {
+        "id": "00000000-0000-4000-8000-000000000201",
+        "value": "Functional",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000202",
+        "value": "Performance",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000203",
+        "value": "Interface",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000204",
+        "value": "Safety",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000205",
+        "value": "Security",
+        "active": true,
+        "sortOrder": 5,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000206",
+        "value": "Operational",
+        "active": true,
+        "sortOrder": 6,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000207",
+        "value": "Other",
+        "active": true,
+        "sortOrder": 7,
+        "system": true
+      }
+    ],
+    "classifications": [
+      {
+        "id": "00000000-0000-4000-8000-000000000301",
+        "value": "UNCLASSIFIED",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000302",
+        "value": "CUI",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000303",
+        "value": "CONFIDENTIAL",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000304",
+        "value": "SECRET",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000305",
+        "value": "TOP SECRET",
+        "active": true,
+        "sortOrder": 5,
+        "system": true
+      }
+    ],
+    "priorities": [
+      {
+        "id": "00000000-0000-4000-8000-000000000401",
+        "value": "Critical",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000402",
+        "value": "High",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000403",
+        "value": "Medium",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000404",
+        "value": "Low",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      }
+    ],
+    "verificationMethods": [
+      {
+        "id": "00000000-0000-4000-8000-000000000501",
+        "value": "Test",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000502",
+        "value": "Analysis",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000503",
+        "value": "Inspection",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000504",
+        "value": "Demonstration",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      }
+    ],
+    "verificationStatuses": [
+      {
+        "id": "00000000-0000-4000-8000-000000000601",
+        "value": "Planned",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000602",
+        "value": "In Progress",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000603",
+        "value": "Complete",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000604",
+        "value": "Blocked",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000605",
+        "value": "Not Applicable",
+        "active": true,
+        "sortOrder": 5,
+        "system": true
+      }
+    ],
+    "assessmentResults": [
+      {
+        "id": "00000000-0000-4000-8000-000000000701",
+        "value": "Not Yet Assessed",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000702",
+        "value": "Met",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000703",
+        "value": "Partially Met",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000704",
+        "value": "Not Met",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000705",
+        "value": "Inconclusive",
+        "active": true,
+        "sortOrder": 5,
+        "system": true
+      }
+    ],
+    "testActivityTypes": [
+      {
+        "id": "00000000-0000-4000-8000-000000000801",
+        "value": "Flight Test",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000802",
+        "value": "Ground Test",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000803",
+        "value": "Lab Test",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000804",
+        "value": "Simulation",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000805",
+        "value": "Tabletop",
+        "active": true,
+        "sortOrder": 5,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000806",
+        "value": "Other",
+        "active": true,
+        "sortOrder": 6,
+        "system": true
+      }
+    ],
+    "testPhases": [
+      {
+        "id": "00000000-0000-4000-8000-000000000901",
+        "value": "DT",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000902",
+        "value": "OT",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000903",
+        "value": "IOT&E",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000904",
+        "value": "FOT&E",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000905",
+        "value": "Regression",
+        "active": true,
+        "sortOrder": 5,
+        "system": true
+      }
+    ],
+    "testActivityStatuses": [
+      {
+        "id": "00000000-0000-4000-8000-000000001001",
+        "value": "Planned",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000001002",
+        "value": "Scheduled",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000001003",
+        "value": "In Progress",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000001004",
+        "value": "Complete",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000001005",
+        "value": "Cancelled",
+        "active": true,
+        "sortOrder": 5,
+        "system": true
+      }
+    ],
+    "evidenceTypes": [
+      {
+        "id": "00000000-0000-4000-8000-000000001101",
+        "value": "Test Report",
+        "active": true,
+        "sortOrder": 1,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000001102",
+        "value": "Data Package",
+        "active": true,
+        "sortOrder": 2,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000001103",
+        "value": "Photograph",
+        "active": true,
+        "sortOrder": 3,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000001104",
+        "value": "Video",
+        "active": true,
+        "sortOrder": 4,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000001105",
+        "value": "Analysis Memo",
+        "active": true,
+        "sortOrder": 5,
+        "system": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000001106",
+        "value": "Other",
+        "active": true,
+        "sortOrder": 6,
+        "system": true
+      }
+    ]
+  },
+  "tagCategories": [
+    {
+      "id": "00000000-0000-4000-8000-000000001201",
+      "name": "System or Subsystem",
+      "active": true,
+      "sortOrder": 1
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001202",
+      "name": "Mission Area or Capability",
+      "active": true,
+      "sortOrder": 2
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001203",
+      "name": "Test Phase or Scenario",
+      "active": true,
+      "sortOrder": 3
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001204",
+      "name": "Risk or Priority",
+      "active": true,
+      "sortOrder": 4
+    }
+  ],
+  "tags": [
+    {
+      "id": "00000000-0000-4000-8000-000000001301",
+      "categoryId": "00000000-0000-4000-8000-000000001201",
+      "name": "Avionics",
+      "active": true,
+      "sortOrder": 1
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001302",
+      "categoryId": "00000000-0000-4000-8000-000000001201",
+      "name": "Comms",
+      "active": true,
+      "sortOrder": 2
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001303",
+      "categoryId": "00000000-0000-4000-8000-000000001201",
+      "name": "Sensors",
+      "active": true,
+      "sortOrder": 3
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001304",
+      "categoryId": "00000000-0000-4000-8000-000000001202",
+      "name": "Surveillance",
+      "active": true,
+      "sortOrder": 1
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001305",
+      "categoryId": "00000000-0000-4000-8000-000000001202",
+      "name": "Survivability",
+      "active": true,
+      "sortOrder": 2
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001306",
+      "categoryId": "00000000-0000-4000-8000-000000001202",
+      "name": "Mission Planning",
+      "active": true,
+      "sortOrder": 3
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001307",
+      "categoryId": "00000000-0000-4000-8000-000000001203",
+      "name": "OT-1",
+      "active": true,
+      "sortOrder": 1
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001308",
+      "categoryId": "00000000-0000-4000-8000-000000001203",
+      "name": "Night",
+      "active": true,
+      "sortOrder": 2
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001309",
+      "categoryId": "00000000-0000-4000-8000-000000001204",
+      "name": "High",
+      "active": true,
+      "sortOrder": 1
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000001310",
+      "categoryId": "00000000-0000-4000-8000-000000001204",
+      "name": "Medium",
+      "active": true,
+      "sortOrder": 2
+    }
+  ],
+  "requirements": [
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.2.1",
+      "description": "<p>Primary detection requirement for OT mission threads.</p>",
+      "analystNotes": "",
+      "rationale": "<p>Supports the surveillance critical operational issue.</p>",
+      "typeId": "00000000-0000-4000-8000-000000000206",
+      "priorityId": "00000000-0000-4000-8000-000000000401",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001303",
+        "00000000-0000-4000-8000-000000001304",
+        "00000000-0000-4000-8000-000000001307",
+        "00000000-0000-4000-8000-000000001309"
+      ],
+      "isDerived": false,
+      "verificationNotes": "",
+      "evidenceIds": [
+        "00000000-0000-4000-8000-000000004001"
+      ],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Linked OT-1 evidence package",
+      "shortTitle": "Detect surface contacts",
+      "id": "00000000-0000-4000-8000-000000002001",
+      "sourceId": "SRD-001",
+      "requirementText": "<p>The system <strong>shall</strong> detect surface contacts within the assigned surveillance area under day and night conditions.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000102",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.2.2",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000201",
+      "priorityId": "00000000-0000-4000-8000-000000000402",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001301",
+        "00000000-0000-4000-8000-000000001304",
+        "00000000-0000-4000-8000-000000001307"
+      ],
+      "isDerived": true,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z",
+      "editorName": "J. Chen",
+      "changeSummary": "Clarified near-real-time wording",
+      "shortTitle": "Report track quality",
+      "id": "00000000-0000-4000-8000-000000002002",
+      "sourceId": "SRD-002",
+      "requirementText": "<p>The system shall report track quality metrics to the operator workstation in near real time.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000102",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.4.1",
+      "description": "",
+      "analystNotes": "<ul><li>Confirm measurement point definitions with Comms IPT.</li></ul>",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000202",
+      "priorityId": "00000000-0000-4000-8000-000000000403",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001302",
+        "00000000-0000-4000-8000-000000001310"
+      ],
+      "isDerived": false,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z",
+      "editorName": "J. Chen",
+      "changeSummary": "Flagged for measurement-point review",
+      "shortTitle": "Comms latency threshold",
+      "id": "00000000-0000-4000-8000-000000002003",
+      "sourceId": "SRD-010",
+      "requirementText": "<p>End-to-end communications latency shall not exceed <em>2 seconds</em> under OT conditions.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000103",
+      "classificationId": "00000000-0000-4000-8000-000000000302"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.5.2",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000203",
+      "priorityId": "00000000-0000-4000-8000-000000000402",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001301",
+        "00000000-0000-4000-8000-000000001304",
+        "00000000-0000-4000-8000-000000001308"
+      ],
+      "isDerived": false,
+      "verificationNotes": "",
+      "evidenceIds": [
+        "00000000-0000-4000-8000-000000004002"
+      ],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Initial baseline import",
+      "shortTitle": "Operator alert presentation",
+      "id": "00000000-0000-4000-8000-000000002004",
+      "sourceId": "SRD-015",
+      "requirementText": "<p>The operator interface shall present detection alerts with priority, bearing, and recommended action.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000102",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.6.1",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000204",
+      "priorityId": "00000000-0000-4000-8000-000000000401",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001301",
+        "00000000-0000-4000-8000-000000001305",
+        "00000000-0000-4000-8000-000000001309"
+      ],
+      "isDerived": false,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Initial baseline import",
+      "shortTitle": "EMI susceptibility",
+      "id": "00000000-0000-4000-8000-000000002005",
+      "sourceId": "SRD-021",
+      "requirementText": "<p>Mission-critical avionics shall continue to operate when exposed to specified electromagnetic interference levels.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000102",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.7.1",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000205",
+      "priorityId": "00000000-0000-4000-8000-000000000402",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001301",
+        "00000000-0000-4000-8000-000000001306"
+      ],
+      "isDerived": false,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Drafted from SRD security annex",
+      "shortTitle": "Secure mission data at rest",
+      "id": "00000000-0000-4000-8000-000000002006",
+      "sourceId": "SRD-022",
+      "requirementText": "<p>Mission data at rest shall be protected using approved encryption controls.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000101",
+      "classificationId": "00000000-0000-4000-8000-000000000302"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.8.1",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000201",
+      "priorityId": "00000000-0000-4000-8000-000000000403",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001306",
+        "00000000-0000-4000-8000-000000001307"
+      ],
+      "isDerived": false,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Initial baseline import",
+      "shortTitle": "Mission plan upload",
+      "id": "00000000-0000-4000-8000-000000002007",
+      "sourceId": "SRD-030",
+      "requirementText": "<p>The system shall accept mission plan uploads from the approved planning workstation.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000102",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.8.2",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000201",
+      "priorityId": "00000000-0000-4000-8000-000000000403",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001306"
+      ],
+      "isDerived": true,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Initial baseline import",
+      "shortTitle": "Plan validation feedback",
+      "id": "00000000-0000-4000-8000-000000002008",
+      "sourceId": "SRD-031",
+      "requirementText": "<p>The system shall provide validation feedback for incomplete or conflicting mission plan fields.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000102",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.9.1",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000203",
+      "priorityId": "00000000-0000-4000-8000-000000000404",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001303"
+      ],
+      "isDerived": false,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Superseded by SRD-041",
+      "shortTitle": "Legacy radar handoff",
+      "id": "00000000-0000-4000-8000-000000002009",
+      "sourceId": "SRD-040",
+      "requirementText": "<p>The system shall support handoff to the legacy radar cueing interface.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000104",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.9.2",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000203",
+      "priorityId": "00000000-0000-4000-8000-000000000402",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001303",
+        "00000000-0000-4000-8000-000000001304"
+      ],
+      "isDerived": false,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Replacement for SRD-040",
+      "shortTitle": "Modern cueing interface",
+      "id": "00000000-0000-4000-8000-000000002010",
+      "sourceId": "SRD-041",
+      "requirementText": "<p>The system shall support cueing exchange with the modern sensor fusion service.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000102",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.10.1",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000204",
+      "priorityId": "00000000-0000-4000-8000-000000000401",
+      "tagIds": [],
+      "isDerived": false,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Marked out of scope for this OT event",
+      "shortTitle": "Training mode disable weapons",
+      "id": "00000000-0000-4000-8000-000000002011",
+      "sourceId": "SRD-050",
+      "requirementText": "<p>When training mode is enabled, weapon release functions shall be inhibited.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000107",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    },
+    {
+      "sourceDocument": "SRD",
+      "sourceDocumentVersion": "2.1",
+      "sourceSection": "3.2.3",
+      "description": "",
+      "analystNotes": "",
+      "rationale": "",
+      "typeId": "00000000-0000-4000-8000-000000000206",
+      "priorityId": "00000000-0000-4000-8000-000000000402",
+      "tagIds": [
+        "00000000-0000-4000-8000-000000001303",
+        "00000000-0000-4000-8000-000000001304",
+        "00000000-0000-4000-8000-000000001309"
+      ],
+      "isDerived": true,
+      "verificationNotes": "",
+      "evidenceIds": [],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z",
+      "editorName": "A. Rivera",
+      "changeSummary": "Candidate derived requirement pending source link",
+      "shortTitle": "Derived contact correlation",
+      "id": "00000000-0000-4000-8000-000000002012",
+      "sourceId": "SRD-060",
+      "requirementText": "<p>The system shall correlate multi-sensor contacts into a single operator-facing track when confidence exceeds threshold.</p>",
+      "statusId": "00000000-0000-4000-8000-000000000102",
+      "classificationId": "00000000-0000-4000-8000-000000000301"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "00000000-0000-4000-8000-000000005001",
+      "sourceRequirementId": "00000000-0000-4000-8000-000000002001",
+      "targetRequirementId": "00000000-0000-4000-8000-000000002002",
+      "type": "Parent of",
+      "rationale": "Track quality reporting supports detection employment.",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000005002",
+      "sourceRequirementId": "00000000-0000-4000-8000-000000002002",
+      "targetRequirementId": "00000000-0000-4000-8000-000000002001",
+      "type": "Derived from",
+      "rationale": "Derived reporting requirement from detection capability.",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000005003",
+      "sourceRequirementId": "00000000-0000-4000-8000-000000002001",
+      "targetRequirementId": "00000000-0000-4000-8000-000000002004",
+      "type": "Supports",
+      "rationale": "Alerts present detection results to the operator.",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000005004",
+      "sourceRequirementId": "00000000-0000-4000-8000-000000002007",
+      "targetRequirementId": "00000000-0000-4000-8000-000000002008",
+      "type": "Parent of",
+      "rationale": "Validation feedback is part of mission plan upload usability.",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000005005",
+      "sourceRequirementId": "00000000-0000-4000-8000-000000002008",
+      "targetRequirementId": "00000000-0000-4000-8000-000000002007",
+      "type": "Derived from",
+      "rationale": "Derived from mission plan upload requirement.",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000005006",
+      "sourceRequirementId": "00000000-0000-4000-8000-000000002010",
+      "targetRequirementId": "00000000-0000-4000-8000-000000002009",
+      "type": "Duplicates",
+      "rationale": "Modern cueing replaces legacy handoff scope.",
+      "notes": "Treat SRD-040 as historical only.",
+      "createdAt": "2026-07-22T09:15:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z",
+      "editorName": "J. Chen"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000005007",
+      "sourceRequirementId": "00000000-0000-4000-8000-000000002003",
+      "targetRequirementId": "00000000-0000-4000-8000-000000002001",
+      "type": "Depends on",
+      "rationale": "Latency budget assumes detection reporting path is available.",
+      "notes": "",
+      "createdAt": "2026-07-22T09:15:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z",
+      "editorName": "J. Chen"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000005008",
+      "sourceRequirementId": "00000000-0000-4000-8000-000000002005",
+      "targetRequirementId": "00000000-0000-4000-8000-000000002003",
+      "type": "Conflicts with",
+      "rationale": "EMI hardening options may increase comms latency.",
+      "notes": "Needs trade study during OT planning.",
+      "createdAt": "2026-07-25T16:45:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z",
+      "editorName": "A. Rivera"
+    }
+  ],
+  "testActivities": [
+    {
+      "id": "00000000-0000-4000-8000-000000003001",
+      "title": "OT-1 Mission Profile Sortie",
+      "typeId": "00000000-0000-4000-8000-000000000801",
+      "phaseId": "00000000-0000-4000-8000-000000000902",
+      "plannedStart": "2026-08-01",
+      "plannedEnd": "2026-08-15",
+      "actualStart": "",
+      "actualEnd": "",
+      "owner": "Flight Test Lead",
+      "statusId": "00000000-0000-4000-8000-000000001002",
+      "objectives": "<p>Execute representative surveillance mission profiles in day and night conditions.</p>",
+      "dataSources": "<p>Aircraft telemetry, operator logs, mission video.</p>",
+      "notes": "<p>Primary OT event for detection and HMI threads.</p>",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000003002",
+      "title": "OT-2 Contested Comms Profile",
+      "typeId": "00000000-0000-4000-8000-000000000801",
+      "phaseId": "00000000-0000-4000-8000-000000000903",
+      "plannedStart": "2026-09-10",
+      "plannedEnd": "2026-09-20",
+      "actualStart": "",
+      "actualEnd": "",
+      "owner": "Comms Test Lead",
+      "statusId": "00000000-0000-4000-8000-000000001001",
+      "objectives": "<p>Characterize end-to-end latency under contested spectrum conditions.</p>",
+      "dataSources": "<p>Network sniffers, aircraft logs, ground station timestamps.</p>",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000003003",
+      "title": "EMI Chamber Screening",
+      "typeId": "00000000-0000-4000-8000-000000000803",
+      "phaseId": "00000000-0000-4000-8000-000000000901",
+      "plannedStart": "2026-07-28",
+      "plannedEnd": "2026-08-05",
+      "actualStart": "2026-07-28",
+      "actualEnd": "",
+      "owner": "Avionics Lab",
+      "statusId": "00000000-0000-4000-8000-000000001003",
+      "objectives": "<p>Screen mission-critical LRUs against specified EMI levels.</p>",
+      "dataSources": "<p>Chamber instrumentation, LRU BIT logs.</p>",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z",
+      "editorName": "J. Chen"
+    }
+  ],
+  "requirementActivityLinks": [
+    {
+      "id": "00000000-0000-4000-8000-000000006001",
+      "requirementId": "00000000-0000-4000-8000-000000002001",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "notes": "Primary observation during OT-1."
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000006002",
+      "requirementId": "00000000-0000-4000-8000-000000002002",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "notes": "Collect track quality samples each sortie."
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000006003",
+      "requirementId": "00000000-0000-4000-8000-000000002004",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "notes": "HMI observation checklist."
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000006004",
+      "requirementId": "00000000-0000-4000-8000-000000002003",
+      "testActivityId": "00000000-0000-4000-8000-000000003002",
+      "notes": "Latency instrumentation required."
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000006005",
+      "requirementId": "00000000-0000-4000-8000-000000002005",
+      "testActivityId": "00000000-0000-4000-8000-000000003003",
+      "notes": "Chamber points map to SRD EMI table."
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000006006",
+      "requirementId": "00000000-0000-4000-8000-000000002007",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "notes": "Pre-flight mission plan load."
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000006007",
+      "requirementId": "00000000-0000-4000-8000-000000002008",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "notes": ""
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000006008",
+      "requirementId": "00000000-0000-4000-8000-000000002010",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "notes": "Cueing exchange during sensor fusion runs."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "00000000-0000-4000-8000-000000004001",
+      "filePath": "\\\\fileshare\\OT\\EaglesNest\\Evidence\\OT1_telemetry_summary.pdf",
+      "fileName": "OT1_telemetry_summary.pdf",
+      "title": "OT-1 Telemetry Summary",
+      "evidenceType": "00000000-0000-4000-8000-000000001102",
+      "sectionOrPage": "pp. 1-12",
+      "notes": "Placeholder network path for demo import testing."
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004002",
+      "filePath": "\\\\fileshare\\OT\\EaglesNest\\Evidence\\HMI_observation_log.xlsx",
+      "fileName": "HMI_observation_log.xlsx",
+      "title": "HMI Observation Log",
+      "evidenceType": "00000000-0000-4000-8000-000000001101",
+      "sectionOrPage": "Sheet: Alerts",
+      "notes": ""
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004003",
+      "filePath": "C:\\OT\\Lab\\EMI_screening_memo.docx",
+      "fileName": "EMI_screening_memo.docx",
+      "title": "EMI Screening Memo",
+      "evidenceType": "00000000-0000-4000-8000-000000001105",
+      "sectionOrPage": "Section 4",
+      "notes": "Local path example; may be unavailable on other machines."
+    }
+  ],
+  "verifications": [
+    {
+      "id": "00000000-0000-4000-8000-000000007001",
+      "requirementId": "00000000-0000-4000-8000-000000002001",
+      "methodId": "00000000-0000-4000-8000-000000000501",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "statusId": "00000000-0000-4000-8000-000000000601",
+      "evidenceIds": [
+        "00000000-0000-4000-8000-000000004001"
+      ],
+      "notes": "<p>Use cooperative surface targets and opportunistic contacts.</p>",
+      "assessmentResultId": "00000000-0000-4000-8000-000000000701",
+      "assessmentNarrative": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000007002",
+      "requirementId": "00000000-0000-4000-8000-000000002002",
+      "methodId": "00000000-0000-4000-8000-000000000501",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "statusId": "00000000-0000-4000-8000-000000000601",
+      "evidenceIds": [],
+      "notes": "",
+      "assessmentResultId": "00000000-0000-4000-8000-000000000701",
+      "assessmentNarrative": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000007003",
+      "requirementId": "00000000-0000-4000-8000-000000002003",
+      "methodId": "00000000-0000-4000-8000-000000000501",
+      "testActivityId": "00000000-0000-4000-8000-000000003002",
+      "statusId": "00000000-0000-4000-8000-000000000601",
+      "evidenceIds": [],
+      "notes": "<p>Measure workstation receive time minus aircraft transmit time.</p>",
+      "assessmentResultId": "00000000-0000-4000-8000-000000000701",
+      "assessmentNarrative": "",
+      "createdAt": "2026-07-22T09:15:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z",
+      "editorName": "J. Chen"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000007004",
+      "requirementId": "00000000-0000-4000-8000-000000002005",
+      "methodId": "00000000-0000-4000-8000-000000000501",
+      "testActivityId": "00000000-0000-4000-8000-000000003003",
+      "statusId": "00000000-0000-4000-8000-000000000602",
+      "evidenceIds": [
+        "00000000-0000-4000-8000-000000004003"
+      ],
+      "notes": "",
+      "assessmentResultId": "00000000-0000-4000-8000-000000000703",
+      "assessmentNarrative": "<p>Two of four LRUs completed screening.</p>",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z",
+      "editorName": "J. Chen"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000007005",
+      "requirementId": "00000000-0000-4000-8000-000000002004",
+      "methodId": "00000000-0000-4000-8000-000000000504",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "statusId": "00000000-0000-4000-8000-000000000601",
+      "evidenceIds": [
+        "00000000-0000-4000-8000-000000004002"
+      ],
+      "notes": "",
+      "assessmentResultId": "00000000-0000-4000-8000-000000000701",
+      "assessmentNarrative": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000007006",
+      "requirementId": "00000000-0000-4000-8000-000000002010",
+      "methodId": "00000000-0000-4000-8000-000000000502",
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "statusId": "00000000-0000-4000-8000-000000000601",
+      "evidenceIds": [],
+      "notes": "<p>Supplement with interface ICD review.</p>",
+      "assessmentResultId": "00000000-0000-4000-8000-000000000701",
+      "assessmentNarrative": "",
+      "createdAt": "2026-07-22T09:15:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z",
+      "editorName": "A. Rivera"
+    }
+  ],
+  "assessments": [
+    {
+      "id": "00000000-0000-4000-8000-000000008001",
+      "requirementId": "00000000-0000-4000-8000-000000002001",
+      "resultId": "00000000-0000-4000-8000-000000000701",
+      "narrative": "<p>Awaiting OT-1 execution.</p>",
+      "evidenceIds": [
+        "00000000-0000-4000-8000-000000004001"
+      ],
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "assessorName": "A. Rivera",
+      "assessmentDate": "2026-07-20",
+      "isCurrent": true,
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000008002",
+      "requirementId": "00000000-0000-4000-8000-000000002005",
+      "resultId": "00000000-0000-4000-8000-000000000703",
+      "narrative": "<p>Partial EMI screening complete; remaining LRUs scheduled.</p>",
+      "evidenceIds": [
+        "00000000-0000-4000-8000-000000004003"
+      ],
+      "testActivityId": "00000000-0000-4000-8000-000000003003",
+      "assessorName": "J. Chen",
+      "assessmentDate": "2026-07-25",
+      "isCurrent": true,
+      "createdAt": "2026-07-25T16:45:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000008003",
+      "requirementId": "00000000-0000-4000-8000-000000002009",
+      "resultId": "00000000-0000-4000-8000-000000000704",
+      "narrative": "<p>Legacy interface no longer available in the OT configuration.</p>",
+      "evidenceIds": [],
+      "testActivityId": null,
+      "assessorName": "A. Rivera",
+      "assessmentDate": "2026-07-22",
+      "isCurrent": true,
+      "createdAt": "2026-07-22T09:15:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000008004",
+      "requirementId": "00000000-0000-4000-8000-000000002007",
+      "resultId": "00000000-0000-4000-8000-000000000702",
+      "narrative": "<p>Mission plan upload demonstrated during dry-run checklist.</p>",
+      "evidenceIds": [],
+      "testActivityId": "00000000-0000-4000-8000-000000003001",
+      "assessorName": "A. Rivera",
+      "assessmentDate": "2026-07-18",
+      "isCurrent": true,
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z"
+    }
+  ],
+  "savedViews": [
+    {
+      "id": "00000000-0000-4000-8000-000000009001",
+      "name": "Active Requirements",
+      "searchQuery": "",
+      "filters": {
+        "statusIds": [
+          "00000000-0000-4000-8000-000000000102"
+        ],
+        "classificationIds": [],
+        "typeIds": [],
+        "priorityIds": [],
+        "verificationMethodIds": [],
+        "assessmentResultIds": [],
+        "testActivityIds": [],
+        "testPhaseIds": [],
+        "owners": [],
+        "sourceDocuments": [],
+        "tagIds": [],
+        "createdFrom": "",
+        "createdTo": "",
+        "modifiedFrom": "",
+        "modifiedTo": "",
+        "gapKey": null
+      },
+      "tagLogic": "any",
+      "sort": [
+        {
+          "field": "sourceId",
+          "direction": "asc"
+        }
+      ],
+      "visibleColumns": [
+        "sourceId",
+        "shortTitle",
+        "status",
+        "classification",
+        "priority",
+        "assessment",
+        "modifiedAt"
+      ],
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000009002",
+      "name": "Needs Review + CUI",
+      "searchQuery": "",
+      "filters": {
+        "statusIds": [
+          "00000000-0000-4000-8000-000000000103"
+        ],
+        "classificationIds": [
+          "00000000-0000-4000-8000-000000000302"
+        ],
+        "typeIds": [],
+        "priorityIds": [],
+        "verificationMethodIds": [],
+        "assessmentResultIds": [],
+        "testActivityIds": [],
+        "testPhaseIds": [],
+        "owners": [],
+        "sourceDocuments": [],
+        "tagIds": [],
+        "createdFrom": "",
+        "createdTo": "",
+        "modifiedFrom": "",
+        "modifiedTo": "",
+        "gapKey": null
+      },
+      "tagLogic": "any",
+      "sort": [
+        {
+          "field": "modifiedAt",
+          "direction": "desc"
+        }
+      ],
+      "visibleColumns": [
+        "sourceId",
+        "shortTitle",
+        "status",
+        "classification",
+        "priority",
+        "assessment",
+        "editorName"
+      ],
+      "createdAt": "2026-07-22T09:15:00.000Z",
+      "modifiedAt": "2026-07-22T09:15:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000009003",
+      "name": "Surveillance tagged",
+      "searchQuery": "",
+      "filters": {
+        "statusIds": [],
+        "classificationIds": [],
+        "typeIds": [],
+        "priorityIds": [],
+        "verificationMethodIds": [],
+        "assessmentResultIds": [],
+        "testActivityIds": [],
+        "testPhaseIds": [],
+        "owners": [],
+        "sourceDocuments": [],
+        "tagIds": [
+          "00000000-0000-4000-8000-000000001304"
+        ],
+        "createdFrom": "",
+        "createdTo": "",
+        "modifiedFrom": "",
+        "modifiedTo": "",
+        "gapKey": null
+      },
+      "tagLogic": "any",
+      "sort": [
+        {
+          "field": "sourceId",
+          "direction": "asc"
+        }
+      ],
+      "visibleColumns": [
+        "sourceId",
+        "shortTitle",
+        "status",
+        "tags",
+        "assessment",
+        "modifiedAt"
+      ],
+      "createdAt": "2026-07-25T16:45:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z"
+    }
+  ]
+}
