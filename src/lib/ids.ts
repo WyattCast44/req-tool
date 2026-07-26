@@ -25,7 +25,7 @@ export function formatDate(value: string | null | undefined): string {
 export function slugifyFilename(value: string): string {
   return value
     .trim()
-    .replace(/[^\w\-]+/g, '_')
+    .replace(/[^\w-]+/g, '_')
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '')
     .slice(0, 80) || 'Project'
