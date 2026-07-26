@@ -49,11 +49,11 @@ export function MatrixPage() {
   })
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Traceability Matrix</h2>
-          <p className="text-sm text-[var(--color-ink-muted)]">
+          <h2 className="page-title">Traceability Matrix</h2>
+          <p className="page-subtitle">
             Filtered set: {filtered.length} requirements. Paginated for usability up to 1,000 records.
           </p>
         </div>

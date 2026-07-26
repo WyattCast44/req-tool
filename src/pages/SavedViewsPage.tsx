@@ -15,11 +15,11 @@ export function SavedViewsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Saved Views</h2>
-          <p className="text-sm text-[var(--color-ink-muted)]">
+          <h2 className="page-title">Saved Views</h2>
+          <p className="page-subtitle">
             Named filter configurations stored in the project save file and shared with all users of that file.
           </p>
         </div>

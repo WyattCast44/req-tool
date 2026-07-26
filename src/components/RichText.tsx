@@ -49,9 +49,9 @@ export function RichTextEditor({ value, onChange, disabled, placeholder }: RichT
   }
 
   return (
-    <div className={`rounded-md border border-[var(--color-line)] bg-white ${disabled ? 'opacity-90' : ''}`}>
+    <div className={`rounded-[2px] border border-[var(--color-line-strong)] bg-white ${disabled ? 'opacity-90' : ''}`}>
       {!disabled && (
-        <div className="flex flex-wrap gap-1 border-b border-[var(--color-line)] bg-[var(--color-panel)] p-1.5">
+        <div className="flex flex-wrap gap-0.5 border-b border-[var(--color-line)] bg-[var(--color-panel)] p-1">
           <ToolbarButton label="B" title="Bold" onClick={() => exec('bold')} className="font-bold" />
           <ToolbarButton label="I" title="Italic" onClick={() => exec('italic')} className="italic" />
           <ToolbarButton label="U" title="Underline" onClick={() => exec('underline')} className="underline" />
@@ -63,7 +63,7 @@ export function RichTextEditor({ value, onChange, disabled, placeholder }: RichT
       )}
       <div
         ref={ref}
-        className="rich-content min-h-[7rem] px-3 py-2 outline-none"
+        className="rich-content min-h-[5rem] px-2 py-1.5 text-[0.8rem] outline-none"
         contentEditable={!disabled}
         role="textbox"
         aria-multiline="true"

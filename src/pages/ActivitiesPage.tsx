@@ -50,11 +50,11 @@ export function ActivitiesPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Test Activities</h2>
-          <p className="text-sm text-[var(--color-ink-muted)]">
+          <h2 className="page-title">Test Activities</h2>
+          <p className="page-subtitle">
             Reusable activities that can be linked to multiple requirements.
           </p>
         </div>

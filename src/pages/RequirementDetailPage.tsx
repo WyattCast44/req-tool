@@ -138,7 +138,7 @@ export function RequirementDetailPage() {
     setForm((prev) => ({ ...prev, [key]: value }))
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="mb-2">
@@ -146,7 +146,7 @@ export function RequirementDetailPage() {
               ← Requirements
             </Link>
           </div>
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
+          <h2 className="page-title">
             {isNew ? 'New Requirement' : form.sourceId}
           </h2>
           {!isNew && (
@@ -200,7 +200,7 @@ export function RequirementDetailPage() {
         </div>
       )}
 
-      <section className="panel grid gap-4 p-4 md:grid-cols-2">
+      <section className="panel grid gap-2.5 p-2.5 md:grid-cols-2">
         <Field label="Source requirement ID" required>
           <input
             className="field-input"
@@ -942,7 +942,7 @@ function Section({
   action?: ReactNode
 }) {
   return (
-    <section className="panel p-4">
+    <section className="panel p-2.5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold">{title}</h3>
         {action}

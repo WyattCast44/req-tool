@@ -174,12 +174,12 @@ export function GraphPage() {
     : null
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Relationship Graph</h2>
-        <p className="text-sm text-[var(--color-ink-muted)]">
-          Focused neighborhood around a selected requirement. Full-project graphs are intentionally avoided.
-        </p>
+        <h2 className="page-title">Relationship Graph</h2>
+          <p className="page-subtitle">
+            Focused neighborhood around a selected requirement. Full-project graphs are intentionally avoided.
+          </p>
       </div>
 
       <div className="panel grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">

@@ -1,17 +1,18 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
 import { formatDateTime } from '../lib/ids'
+import { GlobalSearch } from './GlobalSearch'
 
 const NAV = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/requirements', label: 'Requirements' },
-  { to: '/matrix', label: 'Traceability Matrix' },
-  { to: '/graph', label: 'Relationship Graph' },
-  { to: '/activities', label: 'Test Activities' },
+  { to: '/matrix', label: 'Matrix' },
+  { to: '/graph', label: 'Graph' },
+  { to: '/activities', label: 'Activities' },
   { to: '/views', label: 'Saved Views' },
-  { to: '/reports', label: 'Reports & Exports' },
-  { to: '/lookups', label: 'Lookups & Tags' },
-  { to: '/settings', label: 'Project Settings' },
+  { to: '/reports', label: 'Reports' },
+  { to: '/lookups', label: 'Lookups' },
+  { to: '/settings', label: 'Settings' },
 ]
 
 export function AppShell() {
@@ -37,65 +38,58 @@ export function AppShell() {
   return (
     <div className={`app-shell ${editing ? 'edit-active' : ''}`}>
       {project.metadata.classificationBanner && (
-        <div className="no-print bg-[var(--color-banner)] px-4 py-1.5 text-center text-xs font-bold tracking-[0.14em] text-white">
+        <div className="no-print bg-[var(--color-banner)] px-3 py-1 text-center text-[0.65rem] font-bold tracking-[0.12em] text-white">
           {project.metadata.classificationBanner}
         </div>
       )}
 
       <header
-        className={`no-print border-b px-4 py-3 ${
+        className={`no-print border-b ${
           editing
             ? 'border-[var(--color-edit)] bg-[var(--color-edit-bg)]'
-            : 'border-[var(--color-line)] bg-white/90'
+            : 'border-[var(--color-line)] bg-white'
         }`}
       >
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-              Operational Test Requirements Manager
+        <div className="mx-auto flex max-w-[1700px] items-center gap-3 px-3 py-1.5">
+          <div className="min-w-0 shrink-0">
+            <div className="truncate text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
+              OT Requirements Manager
             </div>
-            <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold leading-tight">
-              {project.metadata.name}
-            </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-              <span
-                className={`badge ${
-                  hasUnexportedChanges
-                    ? 'border-amber-400 bg-[var(--color-warn-bg)] text-[var(--color-warn)]'
-                    : editing
-                      ? 'border-amber-500 bg-white text-[var(--color-edit)]'
-                      : 'border-slate-300 bg-slate-50 text-slate-700'
-                }`}
-              >
-                {label}
-              </span>
-              {localSavedAt && (
-                <span className="text-[var(--color-ink-muted)]">Local save {formatDateTime(localSavedAt)}</span>
-              )}
-            </div>
+            <div className="truncate text-[0.92rem] font-semibold leading-tight">{project.metadata.name}</div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <GlobalSearch />
+
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+            <span
+              className={`badge ${
+                hasUnexportedChanges
+                  ? 'border-amber-400 bg-[var(--color-warn-bg)] text-[var(--color-warn)]'
+                  : editing
+                    ? 'border-amber-500 bg-white text-[var(--color-edit)]'
+                    : 'border-slate-300 bg-slate-50 text-slate-700'
+              }`}
+              title={localSavedAt ? `Local save ${formatDateTime(localSavedAt)}` : undefined}
+            >
+              {editing ? 'EDIT' : 'REVIEW'}
+              {hasUnexportedChanges ? ' · EXPORT REQ' : ''}
+            </span>
             {editing ? (
               <button type="button" className="btn btn-secondary" onClick={exitEditMode}>
-                Exit Edit Mode
+                Exit Edit
               </button>
             ) : (
               <button type="button" className="btn btn-primary" onClick={enterEditMode}>
-                Enter Edit Mode
+                Edit Mode
               </button>
             )}
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => void exportProject()}
-              disabled={!project}
-            >
-              Export Project File
+            <button type="button" className="btn btn-secondary" onClick={() => void exportProject()}>
+              Export
             </button>
             <button
               type="button"
               className="btn btn-ghost"
+              title={label}
               onClick={() => {
                 if (
                   hasUnexportedChanges &&
@@ -103,18 +97,18 @@ export function AppShell() {
                 ) {
                   return
                 }
-                void discardLocalAndClear().then(() => navigate('/'))
+                void discardLocalAndClear().then(() => navigate('/welcome'))
               }}
             >
-              Close Project
+              Close
             </button>
           </div>
         </div>
       </header>
 
       {loadIssues.length > 0 && (
-        <div className="no-print border-b border-amber-300 bg-[var(--color-warn-bg)] px-4 py-2 text-sm text-[var(--color-warn)]">
-          <div className="mx-auto max-w-[1600px]">
+        <div className="no-print border-b border-amber-300 bg-[var(--color-warn-bg)] px-3 py-1.5 text-[0.72rem] text-[var(--color-warn)]">
+          <div className="mx-auto max-w-[1700px]">
             {loadIssues.map((issue) => (
               <div key={issue}>{issue}</div>
             ))}
@@ -122,17 +116,20 @@ export function AppShell() {
         </div>
       )}
 
-      <div className="mx-auto flex w-full max-w-[1600px] flex-1 gap-4 px-4 py-4">
-        <nav className="no-print hidden w-56 shrink-0 md:block">
-          <div className="panel sticky top-4 overflow-hidden">
-            <ul className="flex flex-col p-2">
+      <div className="mx-auto flex w-full max-w-[1700px] flex-1 gap-0 md:gap-3 px-0 md:px-3 py-0 md:py-2">
+        <nav className="no-print hidden w-[11.5rem] shrink-0 md:block">
+          <div className="panel sticky top-2 overflow-hidden">
+            <div className="border-b border-[var(--color-line)] bg-[var(--color-panel)] px-2 py-1.5 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
+              Navigate
+            </div>
+            <ul className="flex flex-col p-1">
               {NAV.map((item) => (
                 <li key={item.to}>
                   <NavLink
                     to={item.to}
                     end={item.end}
                     className={({ isActive }) =>
-                      `block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                      `block rounded-[2px] px-2 py-1 text-[0.78rem] font-medium ${
                         isActive
                           ? 'bg-[var(--color-accent)] text-white'
                           : 'text-[var(--color-ink)] hover:bg-[var(--color-panel-deep)]'
@@ -144,18 +141,21 @@ export function AppShell() {
                 </li>
               ))}
             </ul>
+            <div className="border-t border-[var(--color-line)] px-2 py-1.5 text-[0.62rem] text-[var(--color-ink-muted)]">
+              {project.requirements.length} reqs · {project.relationships.length} rels
+            </div>
           </div>
         </nav>
 
-        <main className="min-w-0 flex-1">
-          <div className="no-print mb-3 flex gap-2 overflow-x-auto md:hidden">
+        <main className="min-w-0 flex-1 px-2 py-2 md:px-0 md:py-0">
+          <div className="no-print mb-2 flex gap-1 overflow-x-auto md:hidden">
             {NAV.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold ${
+                  `whitespace-nowrap rounded-[2px] px-2 py-1 text-[0.68rem] font-semibold ${
                     isActive ? 'bg-[var(--color-accent)] text-white' : 'bg-white border border-[var(--color-line)]'
                   }`
                 }
@@ -169,10 +169,10 @@ export function AppShell() {
       </div>
 
       {toast && (
-        <div className="no-print fixed bottom-4 right-4 z-50 max-w-sm rounded-md border border-[var(--color-line)] bg-white px-4 py-3 shadow-lg">
+        <div className="no-print fixed bottom-3 right-3 z-50 max-w-sm border border-[var(--color-line-strong)] bg-white px-3 py-2 shadow-lg">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-sm">{toast}</p>
-            <button type="button" className="btn btn-ghost px-2 py-1 text-xs" onClick={() => setToast(null)}>
+            <p className="text-[0.75rem]">{toast}</p>
+            <button type="button" className="btn btn-ghost px-1.5 py-0.5 text-[0.65rem]" onClick={() => setToast(null)}>
               Dismiss
             </button>
           </div>

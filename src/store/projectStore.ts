@@ -193,7 +193,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   visibleColumns: [...DEFAULT_COLUMNS],
   selectedRequirementIds: [],
   page: 1,
-  pageSize: 50,
+  pageSize: 100,
   activeSavedViewId: null,
   graphFocusId: null,
   graphDepth: 1,

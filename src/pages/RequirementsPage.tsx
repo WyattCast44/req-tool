@@ -80,15 +80,16 @@ export function RequirementsPage() {
     : null
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-2">
+      <div className="page-header">
         <div>
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Requirements</h2>
-          <p className="text-sm text-[var(--color-ink-muted)]">
+          <h2 className="page-title">Requirements</h2>
+          <p className="page-subtitle">
             Showing {rows.length} of {project.requirements.length}
+            {searchQuery ? ` · search “${searchQuery}”` : ''}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           <button type="button" className="btn btn-secondary" onClick={() => setColumnsOpen((v) => !v)}>
             Columns
           </button>

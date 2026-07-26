@@ -38,20 +38,23 @@ Authoritative data is stored in portable `.otreq` JSON files.
 
 Local browser storage is never the authoritative record.
 
-## Example project file
+## Example project files
 
-Import this file from the welcome screen to exercise the full MVP:
+Import from the welcome screen:
 
 ```text
 examples/EaglesNest_Requirements_v001_2026-07-26.otreq
+examples/EaglesNest_Requirements_STRESS_v001_2026-07-26.otreq
 ```
 
-It includes 12 requirements, relationships, test activities, evidence path references, assessments, tags, and saved views (plus a few intentional dashboard gaps).
+- **Small demo** (`v001`): 12 requirements with relationships, activities, assessments, tags, and intentional dashboard gaps.
+- **Stress dataset** (`STRESS_v001`): ~900 requirements, ~770 relationships, 48 activities, and hundreds of verifications/assessments for UX performance testing.
 
-Regenerate it with:
+Regenerate with:
 
 ```bash
 npm run generate:example
+npm run generate:stress
 ```
 
 ## Development

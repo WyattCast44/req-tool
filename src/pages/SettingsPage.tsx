@@ -16,12 +16,12 @@ export function SettingsPage() {
   const stateLabel = useProjectStore((s) => s.stateLabel)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Project Settings</h2>
-        <p className="text-sm text-[var(--color-ink-muted)]">
-          Project metadata and workspace status. The portable {FILE_EXTENSION} file remains authoritative.
-        </p>
+        <h2 className="page-title">Project Settings</h2>
+          <p className="page-subtitle">
+            Project metadata and workspace status. The portable {FILE_EXTENSION} file remains authoritative.
+          </p>
       </div>
 
       <section className="panel grid gap-4 p-4 md:grid-cols-2">
