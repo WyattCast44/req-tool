@@ -22,12 +22,15 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Project Dashboard</h2>
-        <p className="text-sm text-[var(--color-ink-muted)]">
-          {project.requirements.length} requirements · Review Mode is the default experience
-        </p>
+    <div className="space-y-2.5">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Dashboard</h2>
+          <p className="page-subtitle">
+            {project.requirements.length} requirements · {project.testActivities.length} activities ·{' '}
+            {project.relationships.length} relationships
+          </p>
+        </div>
       </div>
 
       {project.requirements.length === 0 ? (
@@ -42,96 +45,119 @@ export function DashboardPage() {
         />
       ) : (
         <>
-          <section className="panel p-4">
-            <h3 className="mb-3 font-semibold">Requirement Status Counts</h3>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          <section className="panel p-2.5">
+            <h3 className="section-title">Requirement status</h3>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 xl:grid-cols-7">
               {stats.statusCounts.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className="rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-3 text-left transition hover:border-[var(--color-accent)]"
-                  onClick={() =>
-                    goFiltered(() => setFilters({ statusIds: [item.id] }))
-                  }
+                  className="stat-tile"
+                  onClick={() => goFiltered(() => setFilters({ statusIds: [item.id] }))}
                 >
-                  <div className="text-2xl font-semibold tabular-nums">{item.count}</div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-muted)]">
-                    {item.label}
-                  </div>
+                  <div className="stat-value">{item.count}</div>
+                  <div className="stat-label">{item.label}</div>
                 </button>
               ))}
             </div>
           </section>
 
-          <section className="panel p-4">
-            <h3 className="mb-3 font-semibold">Verification Coverage</h3>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="panel p-2.5">
+            <h3 className="section-title">Verification coverage</h3>
+            <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3 xl:grid-cols-5">
               {[
-                ['With verification method', stats.verification.withMethod],
-                ['Linked to planned test activity', stats.verification.withActivity],
-                ['With evidence references', stats.verification.withEvidence],
+                ['With method', stats.verification.withMethod],
+                ['With activity', stats.verification.withActivity],
+                ['With evidence', stats.verification.withEvidence],
                 ['Assessed', stats.verification.assessed],
                 ['Not yet assessed', stats.verification.notYetAssessed],
-                ['Assessed as met', stats.verification.met],
-                ['Assessed as partially met', stats.verification.partiallyMet],
-                ['Assessed as not met', stats.verification.notMet],
-                ['Assessed as inconclusive', stats.verification.inconclusive],
+                ['Met', stats.verification.met],
+                ['Partially met', stats.verification.partiallyMet],
+                ['Not met', stats.verification.notMet],
+                ['Inconclusive', stats.verification.inconclusive],
               ].map(([label, count]) => (
-                <div
-                  key={String(label)}
-                  className="rounded-md border border-[var(--color-line)] px-3 py-3"
-                >
-                  <div className="text-xl font-semibold tabular-nums">{count as number}</div>
-                  <div className="text-sm text-[var(--color-ink-muted)]">{label as string}</div>
+                <div key={String(label)} className="stat-tile">
+                  <div className="stat-value">{count as number}</div>
+                  <div className="stat-label">{label as string}</div>
                 </div>
               ))}
             </div>
           </section>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="panel p-4">
-              <h3 className="mb-3 font-semibold">Recent Changes</h3>
+          <div className="grid gap-2.5 xl:grid-cols-2">
+            <section className="panel overflow-hidden">
+              <div className="border-b border-[var(--color-line)] bg-[var(--color-panel)] px-2.5 py-1.5">
+                <h3 className="section-title mb-0">Recent changes</h3>
+              </div>
               {stats.recentChanges.length === 0 ? (
-                <p className="text-sm text-[var(--color-ink-muted)]">No modification history yet.</p>
+                <p className="px-2.5 py-3 text-[0.75rem] text-[var(--color-ink-muted)]">No modification history yet.</p>
               ) : (
-                <ul className="divide-y divide-[var(--color-line)]">
-                  {stats.recentChanges.map((req) => (
-                    <li key={req.id} className="py-2">
-                      <Link
-                        to={`/requirements/${req.id}`}
-                        className="font-semibold text-[var(--color-accent)] hover:underline"
-                      >
-                        {req.sourceId} — {req.shortTitle || 'Untitled'}
-                      </Link>
-                      <div className="text-xs text-[var(--color-ink-muted)]">
-                        {req.editorName || 'Unknown editor'} · {formatDateTime(req.modifiedAt)}
-                      </div>
-                      <div className="text-sm">{req.changeSummary || '—'}</div>
-                    </li>
-                  ))}
-                </ul>
+                <div className="table-wrap border-0">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Editor</th>
+                        <th>Modified</th>
+                        <th>Summary</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.recentChanges.map((req) => (
+                        <tr key={req.id}>
+                          <td>
+                            <Link className="mono font-semibold hover:underline" to={`/requirements/${req.id}`}>
+                              {req.sourceId}
+                            </Link>
+                          </td>
+                          <td className="max-w-[12rem] truncate">{req.shortTitle || '—'}</td>
+                          <td>{req.editorName || '—'}</td>
+                          <td className="whitespace-nowrap">{formatDateTime(req.modifiedAt)}</td>
+                          <td className="max-w-[16rem] truncate text-[var(--color-ink-muted)]">
+                            {req.changeSummary || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </section>
 
-            <section className="panel p-4">
-              <h3 className="mb-3 font-semibold">Relationship Gaps</h3>
-              <ul className="space-y-2">
-                {stats.gaps.map((gap) => (
-                  <li key={gap.key}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between rounded-md border border-[var(--color-line)] px-3 py-2 text-left hover:bg-[var(--color-panel)]"
-                      onClick={() => {
-                        applyGapFilter(gap.key)
-                        navigate('/requirements')
-                      }}
-                    >
-                      <span className="text-sm">{gap.label}</span>
-                      <span className="badge border-slate-300 bg-white">{gap.count}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            <section className="panel overflow-hidden">
+              <div className="border-b border-[var(--color-line)] bg-[var(--color-panel)] px-2.5 py-1.5">
+                <h3 className="section-title mb-0">Relationship gaps</h3>
+              </div>
+              <div className="table-wrap border-0">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Gap</th>
+                      <th className="w-16 text-right">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.gaps.map((gap) => (
+                      <tr key={gap.key}>
+                        <td>
+                          <button
+                            type="button"
+                            className="text-left text-[var(--color-accent)] hover:underline"
+                            onClick={() => {
+                              applyGapFilter(gap.key)
+                              navigate('/requirements')
+                            }}
+                          >
+                            {gap.label}
+                          </button>
+                        </td>
+                        <td className="text-right font-semibold tabular-nums">{gap.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </div>
         </>

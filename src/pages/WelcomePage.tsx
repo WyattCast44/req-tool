@@ -36,15 +36,15 @@ export function WelcomePage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-5xl flex-col justify-center gap-8 px-4 py-10">
-      <header className="space-y-3">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+    <div className="mx-auto flex min-h-full max-w-4xl flex-col justify-center gap-4 px-3 py-8">
+      <header className="space-y-1.5">
+        <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--color-accent)]">
           Offline Standalone Application
         </p>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-[var(--color-ink)] md:text-5xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)] md:text-3xl">
           Operational Test Requirements Manager
         </h1>
-        <p className="max-w-2xl text-base text-[var(--color-ink-muted)]">
+        <p className="max-w-2xl text-[0.85rem] text-[var(--color-ink-muted)]">
           Create, review, trace, and assess operational test requirements using a portable{' '}
           {FILE_EXTENSION} project file. Works entirely offline in Chrome and Edge — no servers, no
           installation, no network calls.
@@ -92,12 +92,13 @@ export function WelcomePage() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="panel p-5">
-          <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold">Open Project File</h2>
-          <p className="mt-2 text-sm text-[var(--color-ink-muted)]">
-            Select the authoritative {FILE_EXTENSION} save file from the approved network share. The
-            application opens in Review Mode.
+      <div className="grid gap-2.5 md:grid-cols-2">
+        <section className="panel p-3">
+          <h2 className="page-title">Open Project File</h2>
+          <p className="mt-1 text-[0.78rem] text-[var(--color-ink-muted)]">
+            Select an authoritative {FILE_EXTENSION} save file. The application opens in Review Mode.
+            Try <span className="mono">examples/EaglesNest_Requirements_STRESS_v001_2026-07-26.otreq</span> for a
+            900-requirement stress dataset.
           </p>
           <input
             ref={fileRef}
@@ -118,7 +119,7 @@ export function WelcomePage() {
           />
           <button
             type="button"
-            className="btn btn-primary mt-4"
+            className="btn btn-primary mt-3"
             disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
@@ -126,12 +127,12 @@ export function WelcomePage() {
           </button>
         </section>
 
-        <section className="panel p-5">
-          <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold">Create New Project</h2>
-          <p className="mt-2 text-sm text-[var(--color-ink-muted)]">
-            Start an empty project or load a small demo dataset for exploration.
+        <section className="panel p-3">
+          <h2 className="page-title">Create New Project</h2>
+          <p className="mt-1 text-[0.78rem] text-[var(--color-ink-muted)]">
+            Start an empty project or load a small in-app demo dataset.
           </p>
-          <label className="mt-4 block">
+          <label className="mt-3 block">
             <span className="field-label">Project name</span>
             <input
               className="field-input"
@@ -139,7 +140,7 @@ export function WelcomePage() {
               onChange={(e) => setProjectName(e.target.value)}
             />
           </label>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             <button
               type="button"
               className="btn btn-primary"

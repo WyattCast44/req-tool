@@ -1,14 +1,35 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import type { ColumnDef, RowSelectionState, SortingState, VisibilityState } from '@tanstack/react-table'
 import { FilterPanel } from '../components/FilterPanel'
 import { AssessmentBadge, ClassificationBadge, StatusBadge } from '../components/StatusBadge'
 import { EmptyState } from '../components/EmptyState'
+import { DataTable } from '../components/DataTable'
+import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { useProjectStore } from '../store/projectStore'
 import { currentAssessment, filterRequirements } from '../lib/filters'
 import { lookupLabel } from '../lib/defaults'
 import { formatDateTime } from '../lib/ids'
-import type { ColumnId } from '../types/project'
+import type { ColumnId, ProjectData, Requirement } from '../types/project'
 import { ConfirmDialog } from '../components/Modal'
+
+interface RequirementRow {
+  id: string
+  sourceId: string
+  shortTitle: string
+  status: string
+  classification: string
+  type: string
+  priority: string
+  assessment: string
+  verification: string
+  tags: string
+  sourceDocument: string
+  modifiedAt: string
+  modifiedAtRaw: string
+  editorName: string
+  requirement: Requirement
+}
 
 const COLUMN_LABELS: Record<ColumnId, string> = {
   sourceId: 'Source ID',
@@ -25,6 +46,40 @@ const COLUMN_LABELS: Record<ColumnId, string> = {
   editorName: 'Editor',
 }
 
+function toRows(project: ProjectData, requirements: Requirement[]): RequirementRow[] {
+  return requirements.map((req) => {
+    const assessment = currentAssessment(project, req.id)
+    const assessmentLabel = assessment
+      ? lookupLabel(project.lookups.assessmentResults, assessment.resultId)
+      : 'Not Yet Assessed'
+    const methods = project.verifications
+      .filter((v) => v.requirementId === req.id)
+      .map((v) => lookupLabel(project.lookups.verificationMethods, v.methodId))
+      .join(', ')
+    const tags = req.tagIds
+      .map((id) => project.tags.find((t) => t.id === id)?.name)
+      .filter(Boolean)
+      .join(', ')
+    return {
+      id: req.id,
+      sourceId: req.sourceId,
+      shortTitle: req.shortTitle || '',
+      status: lookupLabel(project.lookups.statuses, req.statusId),
+      classification: lookupLabel(project.lookups.classifications, req.classificationId),
+      type: lookupLabel(project.lookups.types, req.typeId),
+      priority: lookupLabel(project.lookups.priorities, req.priorityId),
+      assessment: assessmentLabel,
+      verification: methods,
+      tags,
+      sourceDocument: req.sourceDocument || '',
+      modifiedAt: formatDateTime(req.modifiedAt),
+      modifiedAtRaw: req.modifiedAt,
+      editorName: req.editorName || '',
+      requirement: req,
+    }
+  })
+}
+
 export function RequirementsPage() {
   const navigate = useNavigate()
   const project = useProjectStore((s) => s.project)!
@@ -38,33 +93,201 @@ export function RequirementsPage() {
   const setVisibleColumns = useProjectStore((s) => s.setVisibleColumns)
   const selectedRequirementIds = useProjectStore((s) => s.selectedRequirementIds)
   const setSelectedRequirementIds = useProjectStore((s) => s.setSelectedRequirementIds)
-  const page = useProjectStore((s) => s.page)
   const pageSize = useProjectStore((s) => s.pageSize)
-  const setPage = useProjectStore((s) => s.setPage)
   const upsertSavedView = useProjectStore((s) => s.upsertSavedView)
   const duplicateRequirement = useProjectStore((s) => s.duplicateRequirement)
   const deleteRequirement = useProjectStore((s) => s.deleteRequirement)
 
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [columnsOpen, setColumnsOpen] = useState(false)
 
-  const rows = useMemo(
-    () => filterRequirements(project, searchQuery, filters, tagLogic, sort),
-    [project, searchQuery, filters, tagLogic, sort],
+  // Domain filters from FilterPanel / dashboard / saved views (not TanStack column filters)
+  const filteredRequirements = useMemo(
+    () => filterRequirements(project, searchQuery, filters, tagLogic, [{ field: 'sourceId', direction: 'asc' }]),
+    [project, searchQuery, filters, tagLogic],
   )
 
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize))
-  const safePage = Math.min(page, pageCount)
-  const pageRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const rows = useMemo(() => toRows(project, filteredRequirements), [project, filteredRequirements])
 
-  const toggleSort = (field: string) => {
-    const current = sort[0]
-    if (current?.field === field) {
-      setSort([{ field, direction: current.direction === 'asc' ? 'desc' : 'asc' }])
-    } else {
-      setSort([{ field, direction: 'asc' }])
+  const sorting: SortingState = useMemo(
+    () =>
+      sort.map((s) => ({
+        id: s.field,
+        desc: s.direction === 'desc',
+      })),
+    [sort],
+  )
+
+  const columnVisibility: VisibilityState = useMemo(() => {
+    const visibility: VisibilityState = {}
+    ;(Object.keys(COLUMN_LABELS) as ColumnId[]).forEach((col) => {
+      visibility[col] = visibleColumns.includes(col)
+    })
+    return visibility
+  }, [visibleColumns])
+
+  const rowSelection: RowSelectionState = useMemo(
+    () => Object.fromEntries(selectedRequirementIds.map((id) => [id, true])),
+    [selectedRequirementIds],
+  )
+
+  const columns = useMemo<ColumnDef<RequirementRow>[]>(() => {
+    const defs: ColumnDef<RequirementRow>[] = [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <input
+            type="checkbox"
+            aria-label="Select all on page"
+            checked={table.getIsAllPageRowsSelected()}
+            ref={(el) => {
+              if (el) el.indeterminate = table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()
+            }}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            aria-label={`Select ${row.original.sourceId}`}
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+          />
+        ),
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableHiding: false,
+        enableResizing: false,
+        size: 36,
+        minSize: 36,
+        maxSize: 36,
+      },
+      {
+        accessorKey: 'sourceId',
+        header: 'Source ID',
+        cell: ({ row }) => (
+          <Link className="mono font-semibold text-[var(--color-accent)] hover:underline" to={`/requirements/${row.original.id}`}>
+            {row.original.sourceId}
+          </Link>
+        ),
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.sourceId, value),
+        size: 110,
+        minSize: 80,
+      },
+      {
+        accessorKey: 'shortTitle',
+        header: 'Title',
+        cell: ({ getValue }) => (getValue<string>() ? getValue<string>() : '—'),
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.shortTitle, value),
+        size: 200,
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ getValue }) => <StatusBadge value={getValue<string>()} />,
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.status, value),
+        size: 120,
+      },
+      {
+        accessorKey: 'classification',
+        header: 'Classification',
+        cell: ({ getValue }) => <ClassificationBadge value={getValue<string>()} />,
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.classification, value),
+        size: 120,
+      },
+      {
+        accessorKey: 'type',
+        header: 'Type',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.type, value),
+        size: 110,
+      },
+      {
+        accessorKey: 'priority',
+        header: 'Priority',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.priority, value),
+        size: 90,
+      },
+      {
+        accessorKey: 'assessment',
+        header: 'Assessment',
+        cell: ({ getValue }) => <AssessmentBadge value={getValue<string>()} />,
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.assessment, value),
+        size: 130,
+      },
+      {
+        accessorKey: 'verification',
+        header: 'Verification',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.verification, value),
+        size: 130,
+      },
+      {
+        accessorKey: 'tags',
+        header: 'Tags',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.tags, value),
+        size: 150,
+      },
+      {
+        accessorKey: 'sourceDocument',
+        header: 'Source Doc',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.sourceDocument, value),
+        size: 100,
+      },
+      {
+        accessorKey: 'modifiedAt',
+        header: 'Modified',
+        cell: ({ row }) => row.original.modifiedAt,
+        sortingFn: (a, b) => a.original.modifiedAtRaw.localeCompare(b.original.modifiedAtRaw),
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.modifiedAt, value),
+        size: 150,
+      },
+      {
+        accessorKey: 'editorName',
+        header: 'Editor',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.editorName, value),
+        size: 110,
+      },
+    ]
+
+    if (mode === 'edit') {
+      defs.push({
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem]"
+              onClick={() => {
+                const id = duplicateRequirement(row.original.id, project.metadata.editorNameDefault)
+                if (id) navigate(`/requirements/${id}`)
+              }}
+            >
+              Duplicate
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem] text-[var(--color-danger)]"
+              onClick={() => setDeleteId(row.original.id)}
+            >
+              Delete
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableHiding: false,
+        enableResizing: true,
+        size: 130,
+      })
     }
-  }
+
+    return defs
+  }, [mode, duplicateRequirement, navigate, project.metadata.editorNameDefault])
 
   const deleteTarget = deleteId ? project.requirements.find((r) => r.id === deleteId) : null
   const deleteImpact = deleteId
@@ -80,18 +303,16 @@ export function RequirementsPage() {
     : null
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-2">
+      <div className="page-header">
         <div>
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Requirements</h2>
-          <p className="text-sm text-[var(--color-ink-muted)]">
-            Showing {rows.length} of {project.requirements.length}
+          <h2 className="page-title">Requirements</h2>
+          <p className="page-subtitle">
+            Domain-filtered set: {filteredRequirements.length} of {project.requirements.length}
+            {searchQuery ? ` · search “${searchQuery}”` : ''}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn btn-secondary" onClick={() => setColumnsOpen((v) => !v)}>
-            Columns
-          </button>
+        <div className="flex flex-wrap gap-1.5">
           {mode === 'edit' && (
             <>
               <button
@@ -115,186 +336,42 @@ export function RequirementsPage() {
 
       <FilterPanel />
 
-      {columnsOpen && (
-        <div className="panel grid gap-2 p-4 sm:grid-cols-3 md:grid-cols-4">
-          {(Object.keys(COLUMN_LABELS) as ColumnId[]).map((col) => (
-            <label key={col} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={visibleColumns.includes(col)}
-                onChange={(e) => {
-                  if (e.target.checked) setVisibleColumns([...visibleColumns, col])
-                  else if (visibleColumns.length > 1)
-                    setVisibleColumns(visibleColumns.filter((c) => c !== col))
-                }}
-              />
-              {COLUMN_LABELS[col]}
-            </label>
-          ))}
-        </div>
-      )}
-
-      {rows.length === 0 ? (
+      {filteredRequirements.length === 0 ? (
         <EmptyState
           title="No requirements match the current filters"
           body="Adjust search or filters, or create a requirement in Edit Mode."
         />
       ) : (
-        <>
-          <div className="table-wrap max-h-[70vh]">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>
-                    <input
-                      type="checkbox"
-                      aria-label="Select all on page"
-                      checked={pageRows.every((r) => selectedRequirementIds.includes(r.id)) && pageRows.length > 0}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedRequirementIds(
-                            Array.from(new Set([...selectedRequirementIds, ...pageRows.map((r) => r.id)])),
-                          )
-                        } else {
-                          const pageIds = new Set(pageRows.map((r) => r.id))
-                          setSelectedRequirementIds(selectedRequirementIds.filter((id) => !pageIds.has(id)))
-                        }
-                      }}
-                    />
-                  </th>
-                  {visibleColumns.map((col) => (
-                    <th key={col}>
-                      <button type="button" className="font-inherit uppercase" onClick={() => toggleSort(col)}>
-                        {COLUMN_LABELS[col]}
-                        {sort[0]?.field === col ? (sort[0].direction === 'asc' ? ' ↑' : ' ↓') : ''}
-                      </button>
-                    </th>
-                  ))}
-                  {mode === 'edit' && <th>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((req) => {
-                  const status = lookupLabel(project.lookups.statuses, req.statusId)
-                  const classification = lookupLabel(project.lookups.classifications, req.classificationId)
-                  const assessment = currentAssessment(project, req.id)
-                  const assessmentLabel = assessment
-                    ? lookupLabel(project.lookups.assessmentResults, assessment.resultId)
-                    : 'Not Yet Assessed'
-                  const methods = project.verifications
-                    .filter((v) => v.requirementId === req.id)
-                    .map((v) => lookupLabel(project.lookups.verificationMethods, v.methodId))
-                    .join(', ')
-                  const tags = req.tagIds
-                    .map((id) => project.tags.find((t) => t.id === id)?.name)
-                    .filter(Boolean)
-                    .join(', ')
-
-                  const cell = (col: ColumnId) => {
-                    switch (col) {
-                      case 'sourceId':
-                        return (
-                          <Link className="font-semibold text-[var(--color-accent)] hover:underline" to={`/requirements/${req.id}`}>
-                            {req.sourceId}
-                          </Link>
-                        )
-                      case 'shortTitle':
-                        return req.shortTitle || '—'
-                      case 'status':
-                        return <StatusBadge value={status} />
-                      case 'classification':
-                        return <ClassificationBadge value={classification} />
-                      case 'type':
-                        return lookupLabel(project.lookups.types, req.typeId)
-                      case 'priority':
-                        return lookupLabel(project.lookups.priorities, req.priorityId)
-                      case 'assessment':
-                        return <AssessmentBadge value={assessmentLabel} />
-                      case 'verification':
-                        return methods || '—'
-                      case 'tags':
-                        return tags || '—'
-                      case 'sourceDocument':
-                        return req.sourceDocument || '—'
-                      case 'modifiedAt':
-                        return formatDateTime(req.modifiedAt)
-                      case 'editorName':
-                        return req.editorName || '—'
-                      default:
-                        return '—'
-                    }
-                  }
-
-                  return (
-                    <tr key={req.id} className={selectedRequirementIds.includes(req.id) ? 'selected' : ''}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={selectedRequirementIds.includes(req.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) setSelectedRequirementIds([...selectedRequirementIds, req.id])
-                            else setSelectedRequirementIds(selectedRequirementIds.filter((id) => id !== req.id))
-                          }}
-                        />
-                      </td>
-                      {visibleColumns.map((col) => (
-                        <td key={col}>{cell(col)}</td>
-                      ))}
-                      {mode === 'edit' && (
-                        <td>
-                          <div className="flex flex-wrap gap-1">
-                            <button
-                              type="button"
-                              className="btn btn-ghost px-2 py-1 text-xs"
-                              onClick={() => {
-                                const id = duplicateRequirement(req.id, project.metadata.editorNameDefault)
-                                if (id) navigate(`/requirements/${id}`)
-                              }}
-                            >
-                              Duplicate
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-ghost px-2 py-1 text-xs text-[var(--color-danger)]"
-                              onClick={() => setDeleteId(req.id)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <div>
-              Page {safePage} of {pageCount}
-              {selectedRequirementIds.length > 0 && ` · ${selectedRequirementIds.length} selected`}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={safePage <= 1}
-                onClick={() => setPage(safePage - 1)}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={safePage >= pageCount}
-                onClick={() => setPage(safePage + 1)}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </>
+        <DataTable
+          data={rows}
+          columns={columns}
+          getRowId={(row) => row.id}
+          pageSize={pageSize}
+          sizingStorageKey="requirements"
+          enableRowSelection
+          rowSelection={rowSelection}
+          onRowSelectionChange={(updater) => {
+            const next = typeof updater === 'function' ? updater(rowSelection) : updater
+            setSelectedRequirementIds(Object.keys(next).filter((id) => next[id]))
+          }}
+          sorting={sorting}
+          onSortingChange={(updater) => {
+            const next = typeof updater === 'function' ? updater(sorting) : updater
+            setSort(
+              next.map((item) => ({
+                field: item.id,
+                direction: item.desc ? 'desc' : 'asc',
+              })),
+            )
+          }}
+          columnVisibility={columnVisibility}
+          onColumnVisibilityChange={(updater) => {
+            const next = typeof updater === 'function' ? updater(columnVisibility) : updater
+            const ordered = (Object.keys(COLUMN_LABELS) as ColumnId[]).filter((col) => next[col] !== false)
+            if (ordered.length > 0) setVisibleColumns(ordered)
+          }}
+          emptyMessage="No rows match the current column filters."
+        />
       )}
 
       <ConfirmDialog

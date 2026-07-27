@@ -17,7 +17,7 @@ function MultiSelect({
       <span className="field-label">{label}</span>
       <select
         multiple
-        className="field-input min-h-[5.5rem]"
+        className="field-input min-h-[4.25rem] text-[0.75rem]"
         value={values}
         onChange={(e) =>
           onChange(Array.from(e.target.selectedOptions).map((o) => o.value))
@@ -55,18 +55,18 @@ export function FilterPanel() {
   ).sort()
 
   return (
-    <div className="panel space-y-3 p-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="min-w-[16rem] flex-1">
-          <span className="field-label">Keyword search</span>
+    <div className="panel space-y-2 p-2.5">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="min-w-[14rem] flex-1">
+          <span className="field-label">List search</span>
           <input
             className="field-input"
             value={searchQuery}
-            placeholder="Search ID, title, text, notes, evidence…"
+            placeholder="Filter this list (ID, title, text, notes…)"
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </label>
-        <label className="min-w-[12rem]">
+        <label className="min-w-[10rem]">
           <span className="field-label">Saved view</span>
           <select
             className="field-input"
@@ -85,15 +85,15 @@ export function FilterPanel() {
           </select>
         </label>
         <button type="button" className="btn btn-secondary" onClick={resetFilters}>
-          Clear Filters
+          Clear
         </button>
       </div>
 
       <details>
-        <summary className="cursor-pointer text-sm font-semibold text-[var(--color-accent)]">
+        <summary className="cursor-pointer text-[0.72rem] font-semibold text-[var(--color-accent)]">
           Field filters & tags
         </summary>
-        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <MultiSelect
             label="Status"
             options={project.lookups.statuses.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}

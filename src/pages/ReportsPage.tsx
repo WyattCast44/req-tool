@@ -39,12 +39,12 @@ export function ReportsPage() {
   })
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Reports & Exports</h2>
-        <p className="text-sm text-[var(--color-ink-muted)]">
-          Generate portable project files, CSV products, and printer-friendly requirement reports.
-        </p>
+        <h2 className="page-title">Reports & Exports</h2>
+          <p className="page-subtitle">
+            Generate portable project files, CSV products, and printer-friendly requirement reports.
+          </p>
       </div>
 
       <section className="panel grid gap-3 p-4 md:grid-cols-2">

@@ -1,12 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import type { ColumnDef } from '@tanstack/react-table'
 import { useProjectStore } from '../store/projectStore'
 import { RichTextEditor, RichTextView } from '../components/RichText'
 import { ConfirmDialog, Modal } from '../components/Modal'
+import { DataTable } from '../components/DataTable'
+import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { lookupLabel } from '../lib/defaults'
 import { formatDate } from '../lib/ids'
 import type { TestActivity } from '../types/project'
 import { EmptyState } from '../components/EmptyState'
-import { Link } from 'react-router-dom'
 
 const blank = (): Partial<TestActivity> & { title: string } => ({
   title: '',
@@ -22,6 +25,19 @@ const blank = (): Partial<TestActivity> & { title: string } => ({
   dataSources: '',
   notes: '',
 })
+
+interface ActivityRow {
+  id: string
+  title: string
+  type: string
+  phase: string
+  status: string
+  owner: string
+  planned: string
+  linkedLabels: string
+  linkedIds: string[]
+  activity: TestActivity
+}
 
 export function ActivitiesPage() {
   const project = useProjectStore((s) => s.project)!
@@ -49,14 +65,130 @@ export function ActivitiesPage() {
     setOpen(true)
   }
 
+  const rows = useMemo<ActivityRow[]>(
+    () =>
+      project.testActivities.map((activity) => {
+        const links = project.requirementActivityLinks.filter((l) => l.testActivityId === activity.id)
+        const linkedIds = links
+          .map((link) => project.requirements.find((r) => r.id === link.requirementId)?.id)
+          .filter(Boolean) as string[]
+        const linkedLabels = links
+          .map((link) => project.requirements.find((r) => r.id === link.requirementId)?.sourceId)
+          .filter(Boolean)
+          .join(', ')
+        return {
+          id: activity.id,
+          title: activity.title,
+          type: lookupLabel(project.lookups.testActivityTypes, activity.typeId),
+          phase: lookupLabel(project.lookups.testPhases, activity.phaseId),
+          status: lookupLabel(project.lookups.testActivityStatuses, activity.statusId),
+          owner: activity.owner || '',
+          planned: `${formatDate(activity.plannedStart)} – ${formatDate(activity.plannedEnd)}`,
+          linkedLabels,
+          linkedIds,
+          activity,
+        }
+      }),
+    [project],
+  )
+
+  const columns = useMemo<ColumnDef<ActivityRow>[]>(() => {
+    const defs: ColumnDef<ActivityRow>[] = [
+      {
+        accessorKey: 'title',
+        header: 'Title',
+        cell: ({ getValue }) => <span className="font-semibold">{getValue<string>()}</span>,
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.title, value),
+        size: 220,
+      },
+      {
+        accessorKey: 'type',
+        header: 'Type',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.type, value),
+        size: 110,
+      },
+      {
+        accessorKey: 'phase',
+        header: 'Phase',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.phase, value),
+        size: 90,
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.status, value),
+        size: 110,
+      },
+      {
+        accessorKey: 'owner',
+        header: 'Owner',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.owner, value),
+        size: 120,
+      },
+      {
+        accessorKey: 'planned',
+        header: 'Planned',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.planned, value),
+        size: 170,
+      },
+      {
+        accessorKey: 'linkedLabels',
+        header: 'Linked Reqs',
+        cell: ({ row }) => {
+          if (!row.original.linkedIds.length) return '—'
+          return (
+            <div className="flex flex-wrap gap-1">
+              {row.original.linkedIds.map((reqId, index) => {
+                const label = row.original.linkedLabels.split(', ')[index] || 'REQ'
+                return (
+                  <Link key={reqId} className="mono text-[var(--color-accent)] hover:underline" to={`/requirements/${reqId}`}>
+                    {label}
+                  </Link>
+                )
+              })}
+            </div>
+          )
+        },
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.linkedLabels, value),
+        size: 160,
+      },
+    ]
+
+    if (editing) {
+      defs.push({
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex gap-1">
+            <button type="button" className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem]" onClick={() => openEdit(row.original.activity)}>
+              Edit
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem] text-[var(--color-danger)]"
+              onClick={() => setDeleteId(row.original.id)}
+            >
+              Delete
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableHiding: false,
+        size: 120,
+      })
+    }
+
+    return defs
+  }, [editing])
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-2.5">
+      <div className="page-header">
         <div>
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Test Activities</h2>
-          <p className="text-sm text-[var(--color-ink-muted)]">
-            Reusable activities that can be linked to multiple requirements.
-          </p>
+          <h2 className="page-title">Test Activities</h2>
+          <p className="page-subtitle">Reusable activities that can be linked to multiple requirements.</p>
         </div>
         {editing && (
           <button type="button" className="btn btn-primary" onClick={openCreate}>
@@ -71,70 +203,14 @@ export function ActivitiesPage() {
           body="Create reusable planned test activities in Edit Mode, then link them from requirement detail."
         />
       ) : (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Type</th>
-                <th>Phase</th>
-                <th>Status</th>
-                <th>Owner</th>
-                <th>Planned</th>
-                <th>Linked Reqs</th>
-                {editing && <th>Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {project.testActivities.map((activity) => {
-                const links = project.requirementActivityLinks.filter((l) => l.testActivityId === activity.id)
-                return (
-                  <tr key={activity.id}>
-                    <td className="font-semibold">{activity.title}</td>
-                    <td>{lookupLabel(project.lookups.testActivityTypes, activity.typeId)}</td>
-                    <td>{lookupLabel(project.lookups.testPhases, activity.phaseId)}</td>
-                    <td>{lookupLabel(project.lookups.testActivityStatuses, activity.statusId)}</td>
-                    <td>{activity.owner || '—'}</td>
-                    <td>
-                      {formatDate(activity.plannedStart)} – {formatDate(activity.plannedEnd)}
-                    </td>
-                    <td>
-                      <div className="flex flex-col gap-1">
-                        {links.length === 0 && '—'}
-                        {links.map((link) => {
-                          const req = project.requirements.find((r) => r.id === link.requirementId)
-                          return req ? (
-                            <Link key={link.id} className="text-[var(--color-accent)] hover:underline" to={`/requirements/${req.id}`}>
-                              {req.sourceId}
-                            </Link>
-                          ) : (
-                            <span key={link.id}>Missing</span>
-                          )
-                        })}
-                      </div>
-                    </td>
-                    {editing && (
-                      <td>
-                        <div className="flex gap-1">
-                          <button type="button" className="btn btn-ghost px-2 py-1 text-xs" onClick={() => openEdit(activity)}>
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost px-2 py-1 text-xs text-[var(--color-danger)]"
-                            onClick={() => setDeleteId(activity.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          data={rows}
+          columns={columns}
+          getRowId={(row) => row.id}
+          pageSize={50}
+          sizingStorageKey="activities"
+          emptyMessage="No activities match the current column filters."
+        />
       )}
 
       <Modal
@@ -173,7 +249,9 @@ export function ActivitiesPage() {
             <span className="field-label">Type</span>
             <select className="field-input" value={draft.typeId || ''} onChange={(e) => setDraft((d) => ({ ...d, typeId: e.target.value }))}>
               {project.lookups.testActivityTypes.map((t) => (
-                <option key={t.id} value={t.id}>{t.value}</option>
+                <option key={t.id} value={t.id}>
+                  {t.value}
+                </option>
               ))}
             </select>
           </label>
@@ -181,7 +259,9 @@ export function ActivitiesPage() {
             <span className="field-label">Phase</span>
             <select className="field-input" value={draft.phaseId || ''} onChange={(e) => setDraft((d) => ({ ...d, phaseId: e.target.value }))}>
               {project.lookups.testPhases.map((t) => (
-                <option key={t.id} value={t.id}>{t.value}</option>
+                <option key={t.id} value={t.id}>
+                  {t.value}
+                </option>
               ))}
             </select>
           </label>
@@ -189,7 +269,9 @@ export function ActivitiesPage() {
             <span className="field-label">Status</span>
             <select className="field-input" value={draft.statusId || ''} onChange={(e) => setDraft((d) => ({ ...d, statusId: e.target.value }))}>
               {project.lookups.testActivityStatuses.map((t) => (
-                <option key={t.id} value={t.id}>{t.value}</option>
+                <option key={t.id} value={t.id}>
+                  {t.value}
+                </option>
               ))}
             </select>
           </label>
@@ -246,7 +328,10 @@ export function ActivitiesPage() {
         }}
         message={
           <div>
-            <p>This will permanently delete the activity and remove requirement links. Related verifications/assessments will unlink the activity.</p>
+            <p>
+              This will permanently delete the activity and remove requirement links. Related
+              verifications/assessments will unlink the activity.
+            </p>
           </div>
         }
       />

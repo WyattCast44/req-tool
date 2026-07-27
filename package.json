@@ -9,9 +9,11 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "smoke": "node scripts/smoke-validate.mjs",
-    "generate:example": "node scripts/generate-example-otreq.mjs"
+    "generate:example": "node scripts/generate-example-otreq.mjs",
+    "generate:stress": "node scripts/generate-stress-otreq.mjs"
   },
   "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
     "dompurify": "^3.4.12",
     "idb": "^8.0.3",
     "react": "^19.2.7",
