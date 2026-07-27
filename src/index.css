@@ -22,6 +22,7 @@
   --color-edit-bg: #ffe8c8;
   --color-banner: #243447;
   --color-shell: #f0f2f5;
+  --radius-control: 2px;
 }
 
 @layer base {
@@ -77,6 +78,14 @@
     min-height: 100%;
     display: flex;
     flex-direction: column;
+  }
+
+  .top-navbar {
+    box-shadow: 0 1px 5px rgba(21, 32, 43, 0.12);
+  }
+
+  .app-side-nav {
+    top: calc(var(--top-navbar-height, 0px) + 0.5rem);
   }
 
   .panel {
@@ -186,18 +195,34 @@
 
   .field-input {
     width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
     border: 1px solid var(--color-line-strong);
-    border-radius: 2px;
-    background: white;
+    border-radius: var(--radius-control);
+    background-color: white;
     padding: 0.3rem 0.45rem;
     color: var(--color-ink);
     font-size: 0.8rem;
   }
 
+  select.field-input:not([multiple]) {
+    padding-right: 1.55rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'%3E%3Cpath stroke='%235b6775' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1.5 1.75L6 6.25l4.5-4.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.4rem center;
+    background-size: 0.65rem 0.45rem;
+  }
+
   .field-input:disabled,
   .field-input[readonly] {
-    background: var(--color-panel);
+    background-color: var(--color-panel);
     color: var(--color-ink);
+  }
+
+  .field-chrome {
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-control);
+    background-color: white;
   }
 
   .badge {
@@ -370,6 +395,342 @@
 
   .rich-content a {
     word-break: break-all;
+  }
+
+  .requirement-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border-top: 3px solid var(--color-accent);
+  }
+
+  .requirement-breadcrumb {
+    display: inline-block;
+    color: var(--color-accent);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .requirement-breadcrumb:hover {
+    text-decoration: underline;
+  }
+
+  .requirement-title {
+    max-width: 62rem;
+    margin: 0.12rem 0 0;
+    font-size: 1.3rem;
+    font-weight: 680;
+    line-height: 1.18;
+  }
+
+  .requirement-page {
+    display: grid;
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .requirement-layout {
+    display: contents;
+  }
+
+  .requirement-tab-panel {
+    min-width: 0;
+    order: 1;
+  }
+
+  .requirement-context-rail {
+    min-width: 0;
+    order: 2;
+  }
+
+  .detail-section {
+    scroll-margin-top: calc(var(--top-navbar-height, 0px) + 0.75rem);
+    overflow: hidden;
+  }
+
+  .detail-section-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    min-height: 2.6rem;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-panel);
+  }
+
+  .detail-section-header h3 {
+    margin: 0;
+    font-size: 0.8rem;
+    letter-spacing: 0.01em;
+  }
+
+  .detail-section-body {
+    padding: 0.75rem;
+  }
+
+  .requirement-statement {
+    font-size: 0.98rem;
+    line-height: 1.65;
+  }
+
+  .detail-group {
+    padding: 0.7rem 0;
+  }
+
+  .detail-group:first-child {
+    padding-top: 0;
+  }
+
+  .detail-group:last-child {
+    padding-bottom: 0;
+  }
+
+  .detail-group-label {
+    margin-bottom: 0.3rem;
+    color: var(--color-ink-muted);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .summary-list {
+    margin: 0;
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 0.72fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 0.65rem;
+    padding: 0.42rem 0;
+    border-bottom: 1px solid #e7ebf0;
+  }
+
+  .summary-row:first-child {
+    padding-top: 0;
+  }
+
+  .summary-row:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .summary-row dt {
+    color: var(--color-ink-muted);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .summary-row dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.77rem;
+    font-weight: 550;
+  }
+
+  .tag-group {
+    padding: 0.45rem 0.5rem;
+    border: 1px solid var(--color-line);
+    background: #fff;
+  }
+
+  .tag-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.14rem 0.38rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 999px;
+    background: var(--color-panel);
+    color: var(--color-ink);
+    font-size: 0.66rem;
+    font-weight: 600;
+  }
+
+  .requirement-tabs {
+    position: sticky;
+    top: var(--top-navbar-height, 0px);
+    z-index: 20;
+    display: flex;
+    overflow-x: auto;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(21, 32, 43, 0.08);
+  }
+
+  .requirement-tab {
+    display: flex;
+    min-width: 11rem;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.55rem 0.7rem 0.6rem;
+    border: 0;
+    border-right: 1px solid var(--color-line);
+    background: #fff;
+    color: var(--color-ink);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .requirement-tab:last-child {
+    border-right: 0;
+  }
+
+  .requirement-tab:hover {
+    background: var(--color-panel);
+  }
+
+  .requirement-tab[aria-selected='true'] {
+    background: var(--color-accent-soft);
+    box-shadow: inset 0 -3px 0 var(--color-accent);
+    color: var(--color-accent-hover);
+  }
+
+  .requirement-tab-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+  }
+
+  .requirement-tab-label {
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+
+  .requirement-tab-description {
+    margin-top: 0.08rem;
+    overflow: hidden;
+    color: var(--color-ink-muted);
+    font-size: 0.62rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .requirement-tab-count {
+    display: inline-flex;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.28rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-ink);
+    font-size: 0.65rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .tab-page-intro {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.25rem;
+    padding: 0.7rem 0.75rem;
+    border-left: 3px solid var(--color-accent);
+  }
+
+  .tab-page-intro h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 650;
+  }
+
+  .tab-page-intro p {
+    margin: 0.15rem 0 0;
+    color: var(--color-ink-muted);
+    font-size: 0.7rem;
+  }
+
+  .tab-page-metrics {
+    display: flex;
+    margin: 0;
+    gap: 0.35rem;
+  }
+
+  .tab-page-metrics > div {
+    min-width: 6.5rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-panel);
+  }
+
+  .tab-page-metrics dt {
+    color: var(--color-ink-muted);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .tab-page-metrics dd {
+    margin: 0.08rem 0 0;
+    color: var(--color-accent);
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (min-width: 1200px) {
+    .requirement-page {
+      grid-template-columns: minmax(0, 1fr) minmax(18rem, 21rem);
+    }
+
+    .requirement-hero,
+    .requirement-errors,
+    .requirement-tabs,
+    .requirement-tab-panel {
+      grid-column: 1;
+    }
+
+    .requirement-context-rail {
+      grid-column: 2;
+      grid-row: 1;
+      height: 0;
+      overflow: visible;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .requirement-hero {
+      padding: 0.7rem;
+    }
+
+    .requirement-title {
+      font-size: 1.08rem;
+    }
+
+    .requirement-tab {
+      min-width: 8.5rem;
+      padding: 0.5rem 0.6rem 0.55rem;
+    }
+
+    .requirement-tab-description {
+      display: none;
+    }
+
+    .tab-page-metrics {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .tab-page-metrics > div {
+      min-width: 7.5rem;
+      flex: 1 0 auto;
+    }
   }
 
   .global-search-panel {

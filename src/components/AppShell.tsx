@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
 import { formatDateTime } from '../lib/ids'
@@ -32,12 +33,25 @@ export function AppShell() {
   const loadIssues = useProjectStore((s) => s.loadIssues)
   const discardLocalAndClear = useProjectStore((s) => s.discardLocalAndClear)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [topNavbarHeight, setTopNavbarHeight] = useState(0)
+  const topNavbarRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!confirmClose) return
     const timer = window.setTimeout(() => setConfirmClose(false), 4000)
     return () => window.clearTimeout(timer)
   }, [confirmClose])
+
+  useEffect(() => {
+    const navbar = topNavbarRef.current
+    if (!navbar) return
+
+    const updateHeight = () => setTopNavbarHeight(navbar.offsetHeight)
+    updateHeight()
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(navbar)
+    return () => observer.disconnect()
+  }, [project?.metadata.classificationBanner])
 
   if (!project) return <Outlet />
 
@@ -49,94 +63,99 @@ export function AppShell() {
   }
 
   return (
-    <div className={`app-shell ${editing ? 'edit-active' : ''}`}>
-      {project.metadata.classificationBanner && (
-        <div className="no-print bg-[var(--color-banner)] px-3 py-1 text-center text-[0.65rem] font-bold tracking-[0.12em] text-white">
-          {project.metadata.classificationBanner}
-        </div>
-      )}
-
-      <header
-        className={`no-print border-b ${
-          editing
-            ? 'border-[var(--color-edit)] bg-[var(--color-edit-bg)]'
-            : 'border-[var(--color-line)] bg-white'
-        }`}
-      >
-        <div className="mx-auto flex max-w-[1700px] items-center gap-3 px-3 py-1.5">
-          <div className="min-w-0 shrink-0">
-            <div className="truncate text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-              OT Requirements Manager
-            </div>
-            <div className="truncate text-[0.92rem] font-semibold leading-tight">{project.metadata.name}</div>
+    <div
+      className={`app-shell ${editing ? 'edit-active' : ''}`}
+      style={{ '--top-navbar-height': `${topNavbarHeight}px` } as CSSProperties}
+    >
+      <div ref={topNavbarRef} className="top-navbar no-print sticky top-0 z-40">
+        {project.metadata.classificationBanner && (
+          <div className="bg-[var(--color-banner)] px-3 py-1 text-center text-[0.65rem] font-bold tracking-[0.12em] text-white">
+            {project.metadata.classificationBanner}
           </div>
+        )}
 
-          <GlobalSearch />
+        <header
+          className={`border-b ${
+            editing
+              ? 'border-[var(--color-edit)] bg-[var(--color-edit-bg)]'
+              : 'border-[var(--color-line)] bg-white'
+          }`}
+        >
+          <div className="mx-auto flex max-w-[1700px] items-center gap-3 px-3 py-1.5">
+            <div className="min-w-0 shrink-0">
+              <div className="truncate text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
+                OT Requirements Manager
+              </div>
+              <div className="truncate text-[0.92rem] font-semibold leading-tight">{project.metadata.name}</div>
+            </div>
 
-          <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-            <span
-              className={`badge ${
-                hasUnexportedChanges
-                  ? 'border-amber-400 bg-[var(--color-warn-bg)] text-[var(--color-warn)]'
-                  : editing
-                    ? 'border-amber-500 bg-white text-[var(--color-edit)]'
-                    : 'border-slate-300 bg-slate-50 text-slate-700'
-              }`}
-              title={localSavedAt ? `Local save ${formatDateTime(localSavedAt)}` : undefined}
-            >
-              {editing ? 'EDIT' : 'REVIEW'}
-              {hasUnexportedChanges ? ' · EXPORT REQ' : ''}
-            </span>
-            {editing ? (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={exitEditMode}
-                title="Leave Edit Mode and keep your local working changes"
+            <GlobalSearch />
+
+            <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+              <span
+                className={`badge ${
+                  hasUnexportedChanges
+                    ? 'border-amber-400 bg-[var(--color-warn-bg)] text-[var(--color-warn)]'
+                    : editing
+                      ? 'border-amber-500 bg-white text-[var(--color-edit)]'
+                      : 'border-slate-300 bg-slate-50 text-slate-700'
+                }`}
+                title={localSavedAt ? `Local save ${formatDateTime(localSavedAt)}` : undefined}
               >
-                Exit Edit Mode & Save
-              </button>
-            ) : (
-              <button type="button" className="btn btn-primary" onClick={enterEditMode}>
-                Edit Mode
-              </button>
-            )}
-            {!editing && (
-              <>
-                <button type="button" className="btn btn-secondary" onClick={() => void exportProject()}>
-                  Export
-                </button>
+                {editing ? 'EDIT' : 'REVIEW'}
+                {hasUnexportedChanges ? ' · EXPORT REQ' : ''}
+              </span>
+              {editing ? (
                 <button
                   type="button"
-                  className="btn btn-danger shrink-0"
-                  title={
-                    confirmClose
-                      ? hasUnexportedChanges
-                        ? 'Click again to discard local changes and close'
-                        : 'Click again to close the project'
-                      : label
-                  }
-                  onClick={() => {
-                    if (!confirmClose) {
-                      setConfirmClose(true)
-                      return
-                    }
-                    setConfirmClose(false)
-                    closeProject()
-                  }}
-                  onBlur={() => setConfirmClose(false)}
+                  className="btn btn-secondary"
+                  onClick={exitEditMode}
+                  title="Leave Edit Mode and keep your local working changes"
                 >
-                  {confirmClose
-                    ? hasUnexportedChanges
-                      ? 'Confirm Discard & Close'
-                      : 'Confirm Close'
-                    : 'Close'}
+                  Exit Edit Mode & Save
                 </button>
-              </>
-            )}
+              ) : (
+                <button type="button" className="btn btn-primary" onClick={enterEditMode}>
+                  Edit Mode
+                </button>
+              )}
+              {!editing && (
+                <>
+                  <button type="button" className="btn btn-secondary" onClick={() => void exportProject()}>
+                    Export
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger shrink-0"
+                    title={
+                      confirmClose
+                        ? hasUnexportedChanges
+                          ? 'Click again to discard local changes and close'
+                          : 'Click again to close the project'
+                        : label
+                    }
+                    onClick={() => {
+                      if (!confirmClose) {
+                        setConfirmClose(true)
+                        return
+                      }
+                      setConfirmClose(false)
+                      closeProject()
+                    }}
+                    onBlur={() => setConfirmClose(false)}
+                  >
+                    {confirmClose
+                      ? hasUnexportedChanges
+                        ? 'Confirm Discard & Close'
+                        : 'Confirm Close'
+                      : 'Close'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      </div>
 
       {loadIssues.length > 0 && (
         <div className="no-print border-b border-amber-300 bg-[var(--color-warn-bg)] px-3 py-1.5 text-[0.72rem] text-[var(--color-warn)]">
@@ -150,7 +169,7 @@ export function AppShell() {
 
       <div className="mx-auto flex w-full max-w-[1700px] flex-1 gap-0 md:gap-3 px-0 md:px-3 py-0 md:py-2">
         <nav className="no-print hidden w-[11.5rem] shrink-0 md:block">
-          <div className="panel sticky top-2 overflow-hidden">
+          <div className="panel app-side-nav sticky overflow-hidden">
             <div className="border-b border-[var(--color-line)] bg-[var(--color-panel)] px-2 py-1.5 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
               Navigate
             </div>

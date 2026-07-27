@@ -49,7 +49,7 @@ export function RichTextEditor({ value, onChange, disabled, placeholder }: RichT
   }
 
   return (
-    <div className={`rounded-[2px] border border-[var(--color-line-strong)] bg-white ${disabled ? 'opacity-90' : ''}`}>
+    <div className={`field-chrome ${disabled ? 'opacity-90' : ''}`}>
       {!disabled && (
         <div className="flex flex-wrap gap-0.5 border-b border-[var(--color-line)] bg-[var(--color-panel)] p-1">
           <ToolbarButton label="B" title="Bold" onClick={() => exec('bold')} className="font-bold" />

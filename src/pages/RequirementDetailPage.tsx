@@ -7,8 +7,17 @@ import { AssessmentBadge, ClassificationBadge, StatusBadge } from '../components
 import { ConfirmDialog, Modal } from '../components/Modal'
 import { lookupLabel } from '../lib/defaults'
 import { formatDateTime } from '../lib/ids'
-import { RECIPROCAL_RELATIONSHIP, RELATIONSHIP_TYPES, type RelationshipType, type Requirement } from '../types/project'
+import {
+  RECIPROCAL_RELATIONSHIP,
+  RELATIONSHIP_TYPES,
+  type RelationshipType,
+  type Requirement,
+  type Tag,
+  type TagCategory,
+} from '../types/project'
 import { currentAssessment } from '../lib/filters'
+
+type RequirementTab = 'overview' | 'traceability' | 'verification'
 
 function emptyReq(projectDefaults: { statusId: string; classificationId: string }): Partial<Requirement> {
   return {
@@ -72,6 +81,7 @@ export function RequirementDetailPage() {
   const [errors, setErrors] = useState<string[]>([])
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [relOpen, setRelOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<RequirementTab>('overview')
   const [relDraft, setRelDraft] = useState({
     targetRequirementId: '',
     type: 'Supports' as RelationshipType,
@@ -88,6 +98,10 @@ export function RequirementDetailPage() {
       setForm(emptyReq({ statusId: defaultStatus, classificationId: defaultClass }))
     }
   }, [existing, isNew, defaultStatus, defaultClass, project.metadata.editorNameDefault])
+
+  useEffect(() => {
+    setActiveTab('overview')
+  }, [id])
 
   if (!isNew && !existing) {
     return (
@@ -138,19 +152,23 @@ export function RequirementDetailPage() {
     setForm((prev) => ({ ...prev, [key]: value }))
 
   return (
-    <div className="space-y-2.5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="mb-2">
-            <Link to="/requirements" className="text-sm text-[var(--color-accent)] hover:underline">
-              ← Requirements
-            </Link>
+    <div className="requirement-page">
+      <header className="panel requirement-hero">
+        <div className="min-w-0">
+          <Link to="/requirements" className="requirement-breadcrumb">
+            ← All requirements
+          </Link>
+          <div className="mt-2 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--color-ink-muted)]">
+            {isNew ? 'Create requirement' : `Requirement · ${form.sourceId || 'No source ID'}`}
           </div>
-          <h2 className="page-title">
-            {isNew ? 'New Requirement' : form.sourceId}
+          <h2 className="requirement-title">
+            {isNew ? 'New requirement' : form.shortTitle || form.sourceId || 'Untitled requirement'}
           </h2>
+          {!isNew && form.shortTitle && (
+            <div className="mono mt-1 text-[var(--color-ink-muted)]">{form.sourceId}</div>
+          )}
           {!isNew && (
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
               <StatusBadge value={lookupLabel(project.lookups.statuses, form.statusId || '')} />
               <ClassificationBadge value={lookupLabel(project.lookups.classifications, form.classificationId || '')} />
               {current && (
@@ -159,7 +177,7 @@ export function RequirementDetailPage() {
             </div>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           {reqId && (
             <>
               <button
@@ -188,10 +206,10 @@ export function RequirementDetailPage() {
             </button>
           )}
         </div>
-      </div>
+      </header>
 
       {errors.length > 0 && (
-        <div className="panel border-[var(--color-danger)] bg-[var(--color-danger-bg)] p-3 text-sm text-[var(--color-danger)]">
+        <div className="panel requirement-errors border-[var(--color-danger)] bg-[var(--color-danger-bg)] p-3 text-sm text-[var(--color-danger)]">
           <ul className="list-disc pl-5">
             {errors.map((e) => (
               <li key={e}>{e}</li>
@@ -200,197 +218,293 @@ export function RequirementDetailPage() {
         </div>
       )}
 
-      <section className="panel grid gap-2.5 p-2.5 md:grid-cols-2">
-        <Field label="Source requirement ID" required>
-          <input
-            className="field-input"
-            disabled={!editing}
-            value={form.sourceId || ''}
-            onChange={(e) => patch('sourceId', e.target.value)}
+      {!isNew && (
+        <nav className="panel requirement-tabs" role="tablist" aria-label="Requirement detail pages">
+          <RequirementTabButton
+            id="overview"
+            label="Overview"
+            description="Statement and analysis"
+            activeTab={activeTab}
+            onSelect={setActiveTab}
           />
-        </Field>
-        <Field label="Short title">
-          <input
-            className="field-input"
-            disabled={!editing}
-            value={form.shortTitle || ''}
-            onChange={(e) => patch('shortTitle', e.target.value)}
+          <RequirementTabButton
+            id="traceability"
+            label="Traceability"
+            description="Relationships and test activities"
+            count={relationships.length + activityLinks.length}
+            activeTab={activeTab}
+            onSelect={setActiveTab}
           />
-        </Field>
-        <Field label="Status" required>
-          <select
-            className="field-input"
-            disabled={!editing}
-            value={form.statusId || ''}
-            onChange={(e) => patch('statusId', e.target.value)}
+          <RequirementTabButton
+            id="verification"
+            label="Verification & Evidence"
+            description="Verification, evidence, and assessments"
+            count={verifications.length + (form.evidenceIds || []).length + assessments.length}
+            activeTab={activeTab}
+            onSelect={setActiveTab}
+          />
+        </nav>
+      )}
+
+      <div className="requirement-layout">
+        {activeTab === 'overview' && (
+        <div
+          id="requirement-panel-overview"
+          className="requirement-tab-panel min-w-0 space-y-3"
+          role="tabpanel"
+          aria-labelledby={isNew ? undefined : 'requirement-tab-overview'}
+        >
+          <Section
+            id="requirement-statement"
+            title="Requirement statement"
+            description="The authoritative behavior, capability, or constraint."
           >
-            {project.lookups.statuses.filter((s) => s.active).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.value}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Classification" required>
-          <select
-            className="field-input"
-            disabled={!editing}
-            value={form.classificationId || ''}
-            onChange={(e) => patch('classificationId', e.target.value)}
-          >
-            {project.lookups.classifications.filter((s) => s.active).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.value}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Requirement type">
-          <select
-            className="field-input"
-            disabled={!editing}
-            value={form.typeId || ''}
-            onChange={(e) => patch('typeId', e.target.value)}
-          >
-            <option value="">—</option>
-            {project.lookups.types.filter((s) => s.active).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.value}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Priority">
-          <select
-            className="field-input"
-            disabled={!editing}
-            value={form.priorityId || ''}
-            onChange={(e) => patch('priorityId', e.target.value)}
-          >
-            <option value="">—</option>
-            {project.lookups.priorities.filter((s) => s.active).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.value}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <div className="md:col-span-2">
-          <Field label="Requirement text" required>
             {editing ? (
-              <RichTextEditor value={form.requirementText || ''} onChange={(html) => patch('requirementText', html)} />
+              <Field label="Requirement text" required>
+                <RichTextEditor
+                  value={form.requirementText || ''}
+                  onChange={(html) => patch('requirementText', html)}
+                  placeholder="Enter the requirement statement…"
+                />
+              </Field>
             ) : (
-              <div className="rounded-md border border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2">
-                <RichTextView html={form.requirementText || ''} />
+              <DetailContent html={form.requirementText || ''} prominent />
+            )}
+          </Section>
+
+          <Section
+            id="context-analysis"
+            title="Context & analysis"
+            description="Supporting explanation, intent, and analyst interpretation."
+          >
+            {editing ? (
+              <div className="space-y-3">
+                <Field label="Description">
+                  <RichTextEditor value={form.description || ''} onChange={(html) => patch('description', html)} />
+                </Field>
+                <Field label="Requirement rationale">
+                  <RichTextEditor value={form.rationale || ''} onChange={(html) => patch('rationale', html)} />
+                </Field>
+                <Field label="Analyst notes">
+                  <RichTextEditor value={form.analystNotes || ''} onChange={(html) => patch('analystNotes', html)} />
+                </Field>
+              </div>
+            ) : (
+              <div className="divide-y divide-[var(--color-line)]">
+                <DetailGroup label="Description" html={form.description || ''} />
+                <DetailGroup label="Rationale" html={form.rationale || ''} />
+                <DetailGroup label="Analyst notes" html={form.analystNotes || ''} />
               </div>
             )}
-          </Field>
+          </Section>
         </div>
-        <Field label="Source document">
-          <input className="field-input" disabled={!editing} value={form.sourceDocument || ''} onChange={(e) => patch('sourceDocument', e.target.value)} />
-        </Field>
-        <Field label="Source document version">
-          <input className="field-input" disabled={!editing} value={form.sourceDocumentVersion || ''} onChange={(e) => patch('sourceDocumentVersion', e.target.value)} />
-        </Field>
-        <Field label="Source section / paragraph">
-          <input className="field-input" disabled={!editing} value={form.sourceSection || ''} onChange={(e) => patch('sourceSection', e.target.value)} />
-        </Field>
-        <Field label="Derived requirement">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              disabled={!editing}
-              checked={Boolean(form.isDerived)}
-              onChange={(e) => patch('isDerived', e.target.checked)}
-            />
-            Mark as derived
-          </label>
-        </Field>
-        <div className="md:col-span-2">
-          <Field label="Description">
-            {editing ? (
-              <RichTextEditor value={form.description || ''} onChange={(html) => patch('description', html)} />
-            ) : (
-              <RichTextView html={form.description || ''} />
-            )}
-          </Field>
-        </div>
-        <div className="md:col-span-2">
-          <Field label="Analyst notes">
-            {editing ? (
-              <RichTextEditor value={form.analystNotes || ''} onChange={(html) => patch('analystNotes', html)} />
-            ) : (
-              <RichTextView html={form.analystNotes || ''} />
-            )}
-          </Field>
-        </div>
-        <div className="md:col-span-2">
-          <Field label="Requirement rationale">
-            {editing ? (
-              <RichTextEditor value={form.rationale || ''} onChange={(html) => patch('rationale', html)} />
-            ) : (
-              <RichTextView html={form.rationale || ''} />
-            )}
-          </Field>
-        </div>
-        <div className="md:col-span-2">
-          <Field label="Tags">
-            <div className="grid gap-2 sm:grid-cols-2">
-              {project.tagCategories
-                .filter((c) => c.active)
-                .sort((a, b) => a.sortOrder - b.sortOrder)
-                .map((cat) => {
-                  const tags = project.tags.filter((t) => t.categoryId === cat.id && t.active)
-                  if (!tags.length) return null
-                  return (
-                    <div key={cat.id} className="rounded-md border border-[var(--color-line)] p-2">
-                      <div className="mb-1 text-xs font-bold uppercase text-[var(--color-ink-muted)]">{cat.name}</div>
-                      <div className="flex flex-col gap-1">
-                        {tags.map((tag) => (
-                          <label key={tag.id} className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              disabled={!editing}
-                              checked={(form.tagIds || []).includes(tag.id)}
-                              onChange={(e) => {
-                                const set = new Set(form.tagIds || [])
-                                if (e.target.checked) set.add(tag.id)
-                                else set.delete(tag.id)
-                                patch('tagIds', Array.from(set))
-                              }}
-                            />
-                            {tag.name}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-            </div>
-          </Field>
-        </div>
-        {editing && (
-          <>
-            <Field label="Editor name" required={!isNew}>
-              <input className="field-input" value={editorName} onChange={(e) => setEditorName(e.target.value)} />
-            </Field>
-            <Field label="Change summary" required={!isNew}>
-              <input className="field-input" value={changeSummary} onChange={(e) => setChangeSummary(e.target.value)} />
-            </Field>
-          </>
         )}
-        {!isNew && existing && (
-          <div className="md:col-span-2 text-xs text-[var(--color-ink-muted)]">
-            Created {formatDateTime(existing.createdAt)} · Last modified {formatDateTime(existing.modifiedAt)} by{' '}
-            {existing.editorName || '—'} · {existing.changeSummary || '—'}
-          </div>
-        )}
-      </section>
 
-      {!isNew && reqId && (
-        <>
+        <aside className="requirement-context-rail min-w-0 space-y-3">
           <Section
+            id="requirement-summary"
+            title="At a glance"
+            description={editing ? 'Core identity and categorization.' : undefined}
+          >
+            {editing ? (
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
+                <Field label="Source requirement ID" required>
+                  <input
+                    className="field-input"
+                    value={form.sourceId || ''}
+                    onChange={(e) => patch('sourceId', e.target.value)}
+                  />
+                </Field>
+                <Field label="Short title">
+                  <input
+                    className="field-input"
+                    value={form.shortTitle || ''}
+                    onChange={(e) => patch('shortTitle', e.target.value)}
+                  />
+                </Field>
+                <Field label="Status" required>
+                  <select
+                    className="field-input"
+                    value={form.statusId || ''}
+                    onChange={(e) => patch('statusId', e.target.value)}
+                  >
+                    {project.lookups.statuses.filter((s) => s.active).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.value}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Classification" required>
+                  <select
+                    className="field-input"
+                    value={form.classificationId || ''}
+                    onChange={(e) => patch('classificationId', e.target.value)}
+                  >
+                    {project.lookups.classifications.filter((s) => s.active).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.value}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Requirement type">
+                  <select
+                    className="field-input"
+                    value={form.typeId || ''}
+                    onChange={(e) => patch('typeId', e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {project.lookups.types.filter((s) => s.active).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.value}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Priority">
+                  <select
+                    className="field-input"
+                    value={form.priorityId || ''}
+                    onChange={(e) => patch('priorityId', e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {project.lookups.priorities.filter((s) => s.active).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.value}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            ) : (
+              <dl className="summary-list">
+                <SummaryValue label="Status">
+                  <StatusBadge value={lookupLabel(project.lookups.statuses, form.statusId || '')} />
+                </SummaryValue>
+                <SummaryValue label="Assessment">
+                  {current ? (
+                    <AssessmentBadge value={lookupLabel(project.lookups.assessmentResults, current.resultId)} />
+                  ) : (
+                    'Not assessed'
+                  )}
+                </SummaryValue>
+                <SummaryValue label="Type" value={lookupLabel(project.lookups.types, form.typeId || '')} />
+                <SummaryValue label="Priority" value={lookupLabel(project.lookups.priorities, form.priorityId || '')} />
+                <SummaryValue label="Classification">
+                  <ClassificationBadge value={lookupLabel(project.lookups.classifications, form.classificationId || '')} />
+                </SummaryValue>
+                <SummaryValue label="Derived" value={form.isDerived ? 'Yes' : 'No'} />
+              </dl>
+            )}
+          </Section>
+
+          <Section id="source-provenance" title="Source & provenance">
+            {editing ? (
+              <div className="space-y-2.5">
+                <Field label="Source document">
+                  <input
+                    className="field-input"
+                    value={form.sourceDocument || ''}
+                    onChange={(e) => patch('sourceDocument', e.target.value)}
+                  />
+                </Field>
+                <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
+                  <Field label="Document version">
+                    <input
+                      className="field-input"
+                      value={form.sourceDocumentVersion || ''}
+                      onChange={(e) => patch('sourceDocumentVersion', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Section / paragraph">
+                    <input
+                      className="field-input"
+                      value={form.sourceSection || ''}
+                      onChange={(e) => patch('sourceSection', e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <Field label="Derived requirement">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.isDerived)}
+                      onChange={(e) => patch('isDerived', e.target.checked)}
+                    />
+                    Mark as derived
+                  </label>
+                </Field>
+                <Field label="Tags">
+                  <TagPicker
+                    categories={project.tagCategories}
+                    tags={project.tags}
+                    selectedIds={form.tagIds || []}
+                    onChange={(tagIds) => patch('tagIds', tagIds)}
+                  />
+                </Field>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <dl className="summary-list">
+                  <SummaryValue label="Document" value={form.sourceDocument || 'Not specified'} />
+                  <SummaryValue label="Version" value={form.sourceDocumentVersion || '—'} />
+                  <SummaryValue label="Section" value={form.sourceSection || '—'} />
+                </dl>
+                <TagSummary
+                  categories={project.tagCategories}
+                  tags={project.tags}
+                  selectedIds={form.tagIds || []}
+                />
+              </div>
+            )}
+          </Section>
+
+          <Section id="record-history" title="Record history">
+            {editing && (
+              <div className="mb-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
+                <Field label="Editor name" required={!isNew}>
+                  <input className="field-input" value={editorName} onChange={(e) => setEditorName(e.target.value)} />
+                </Field>
+                <Field label="Change summary" required={!isNew}>
+                  <input className="field-input" value={changeSummary} onChange={(e) => setChangeSummary(e.target.value)} />
+                </Field>
+              </div>
+            )}
+            {!isNew && existing ? (
+              <dl className="summary-list">
+                <SummaryValue label="Created" value={formatDateTime(existing.createdAt)} />
+                <SummaryValue label="Last modified" value={formatDateTime(existing.modifiedAt)} />
+                <SummaryValue label="Editor" value={existing.editorName || '—'} />
+                <SummaryValue label="Last change" value={existing.changeSummary || '—'} />
+              </dl>
+            ) : (
+              <p className="text-sm text-[var(--color-ink-muted)]">
+                History will begin when this requirement is created.
+              </p>
+            )}
+          </Section>
+        </aside>
+
+      {!isNew && reqId && activeTab === 'traceability' && (
+        <div
+          id="requirement-panel-traceability"
+          className="requirement-tab-panel space-y-3"
+          role="tabpanel"
+          aria-labelledby="requirement-tab-traceability"
+        >
+          <TabPageIntro
+            title="Traceability"
+            description="Understand how this requirement connects to other requirements and planned test coverage."
+            metrics={[
+              { label: 'Relationships', count: relationships.length },
+              { label: 'Test activities', count: activityLinks.length },
+            ]}
+          />
+          <Section
+            id="relationships"
             title="Relationships"
+            description="Incoming and outgoing links to other requirements."
             action={
               editing ? (
                 <button type="button" className="btn btn-secondary" onClick={() => setRelOpen(true)}>
@@ -457,7 +571,9 @@ export function RequirementDetailPage() {
           </Section>
 
           <Section
+            id="test-activities"
             title="Test Activities"
+            description="Planned test activities that exercise this requirement."
             action={
               editing ? (
                 <ActivityLinker
@@ -499,9 +615,29 @@ export function RequirementDetailPage() {
               </ul>
             )}
           </Section>
+        </div>
+      )}
 
+      {!isNew && reqId && activeTab === 'verification' && (
+        <div
+          id="requirement-panel-verification"
+          className="requirement-tab-panel space-y-3"
+          role="tabpanel"
+          aria-labelledby="requirement-tab-verification"
+        >
+          <TabPageIntro
+            title="Verification & evidence"
+            description="Review verification progress, supporting evidence, and the assessment history."
+            metrics={[
+              { label: 'Verification records', count: verifications.length },
+              { label: 'Evidence references', count: (form.evidenceIds || []).length },
+              { label: 'Assessments', count: assessments.length },
+            ]}
+          />
           <Section
+            id="verification"
             title="Verification"
+            description="Methods, status, and notes used to verify the requirement."
             action={
               editing ? (
                 <button
@@ -624,7 +760,9 @@ export function RequirementDetailPage() {
           </Section>
 
           <Section
+            id="evidence"
             title="Evidence References"
+            description="Files and source material that substantiate this requirement."
             action={
               editing ? (
                 <button
@@ -698,7 +836,9 @@ export function RequirementDetailPage() {
           </Section>
 
           <Section
+            id="assessments"
             title="Assessments"
+            description="Assessment history, with the current result surfaced first."
             action={
               editing ? (
                 <button
@@ -799,8 +939,9 @@ export function RequirementDetailPage() {
               </div>
             )}
           </Section>
-        </>
+        </div>
       )}
+      </div>
 
       <Modal
         open={relOpen}
@@ -932,22 +1073,228 @@ function Field({
   )
 }
 
-function Section({
-  title,
+function DetailContent({ html, prominent = false }: { html: string; prominent?: boolean }) {
+  const hasContent = html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .trim().length > 0
+
+  if (!hasContent) {
+    return <p className="text-sm italic text-[var(--color-ink-muted)]">Not provided.</p>
+  }
+
+  return (
+    <RichTextView
+      html={html}
+      className={prominent ? 'requirement-statement' : 'text-[0.8rem] leading-relaxed'}
+    />
+  )
+}
+
+function DetailGroup({ label, html }: { label: string; html: string }) {
+  return (
+    <div className="detail-group">
+      <div className="detail-group-label">{label}</div>
+      <DetailContent html={html} />
+    </div>
+  )
+}
+
+function SummaryValue({
+  label,
+  value,
   children,
-  action,
 }: {
-  title: string
-  children: ReactNode
-  action?: ReactNode
+  label: string
+  value?: string
+  children?: ReactNode
 }) {
   return (
-    <section className="panel p-2.5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">{title}</h3>
+    <div className="summary-row">
+      <dt>{label}</dt>
+      <dd>{children ?? value ?? '—'}</dd>
+    </div>
+  )
+}
+
+function TagPicker({
+  categories,
+  tags,
+  selectedIds,
+  onChange,
+}: {
+  categories: TagCategory[]
+  tags: Tag[]
+  selectedIds: string[]
+  onChange: (tagIds: string[]) => void
+}) {
+  const activeCategories = categories
+    .filter((category) => category.active)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+
+  if (!activeCategories.some((category) => tags.some((tag) => tag.categoryId === category.id && tag.active))) {
+    return <p className="text-xs italic text-[var(--color-ink-muted)]">No tags configured.</p>
+  }
+
+  return (
+    <div className="space-y-2">
+      {activeCategories.map((category) => {
+        const categoryTags = tags
+          .filter((tag) => tag.categoryId === category.id && tag.active)
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+        if (!categoryTags.length) return null
+        return (
+          <div key={category.id} className="tag-group">
+            <div className="mb-1 text-[0.62rem] font-bold uppercase tracking-[0.04em] text-[var(--color-ink-muted)]">
+              {category.name}
+            </div>
+            <div className="space-y-1">
+              {categoryTags.map((tag) => (
+                <label key={tag.id} className="flex items-center gap-2 text-[0.78rem]">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(tag.id)}
+                    onChange={(event) => {
+                      const nextIds = new Set(selectedIds)
+                      if (event.target.checked) nextIds.add(tag.id)
+                      else nextIds.delete(tag.id)
+                      onChange(Array.from(nextIds))
+                    }}
+                  />
+                  {tag.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function TagSummary({
+  categories,
+  tags,
+  selectedIds,
+}: {
+  categories: TagCategory[]
+  tags: Tag[]
+  selectedIds: string[]
+}) {
+  const selectedTags = selectedIds
+    .map((id) => tags.find((tag) => tag.id === id))
+    .filter((tag): tag is Tag => Boolean(tag))
+
+  return (
+    <div>
+      <div className="field-label">Tags</div>
+      {selectedTags.length ? (
+        <div className="flex flex-wrap gap-1">
+          {selectedTags.map((tag) => {
+            const category = categories.find((item) => item.id === tag.categoryId)
+            return (
+              <span key={tag.id} className="tag-chip" title={category?.name}>
+                {tag.name}
+              </span>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="text-xs italic text-[var(--color-ink-muted)]">No tags assigned.</p>
+      )}
+    </div>
+  )
+}
+
+function RequirementTabButton({
+  id,
+  label,
+  description,
+  count,
+  activeTab,
+  onSelect,
+}: {
+  id: RequirementTab
+  label: string
+  description: string
+  count?: number
+  activeTab: RequirementTab
+  onSelect: (tab: RequirementTab) => void
+}) {
+  const active = activeTab === id
+  return (
+    <button
+      type="button"
+      id={`requirement-tab-${id}`}
+      className="requirement-tab"
+      role="tab"
+      aria-selected={active}
+      aria-controls={`requirement-panel-${id}`}
+      onClick={() => onSelect(id)}
+    >
+      <span className="requirement-tab-copy">
+        <span className="requirement-tab-label">{label}</span>
+        <span className="requirement-tab-description">{description}</span>
+      </span>
+      {count !== undefined && <span className="requirement-tab-count">{count}</span>}
+    </button>
+  )
+}
+
+function TabPageIntro({
+  title,
+  description,
+  metrics,
+}: {
+  title: string
+  description: string
+  metrics: { label: string; count: number }[]
+}) {
+  return (
+    <section className="panel tab-page-intro">
+      <div>
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </div>
+      <dl className="tab-page-metrics">
+        {metrics.map((metric) => (
+          <div key={metric.label}>
+            <dt>{metric.label}</dt>
+            <dd>{metric.count}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
+function Section({
+  id,
+  title,
+  description,
+  children,
+  action,
+  className = '',
+}: {
+  id?: string
+  title: string
+  description?: string
+  children: ReactNode
+  action?: ReactNode
+  className?: string
+}) {
+  return (
+    <section id={id} className={`panel detail-section ${className}`}>
+      <div className="detail-section-header">
+        <div>
+          <h3 className="font-semibold">{title}</h3>
+          {description && (
+            <p className="mt-0.5 text-[0.7rem] text-[var(--color-ink-muted)]">{description}</p>
+          )}
+        </div>
         {action}
       </div>
-      {children}
+      <div className="detail-section-body">{children}</div>
     </section>
   )
 }
