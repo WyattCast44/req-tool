@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
+    "cytoscape": "^3.34.0",
     "docx": "^9.7.1",
     "dompurify": "^3.4.12",
     "idb": "^8.0.3",

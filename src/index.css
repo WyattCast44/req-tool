@@ -302,6 +302,31 @@
     min-width: 100%;
   }
 
+  .matrix-col-header {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    line-height: 1.15;
+    max-height: 10rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-inline: auto;
+  }
+
+  .data-table th:has(.matrix-col-header) {
+    vertical-align: bottom;
+    text-align: center;
+    padding-inline: 0.15rem;
+  }
+
+  .data-table th:has(.matrix-col-header) .header-sort-btn {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    max-width: none;
+    overflow: visible;
+  }
+
   .header-sort-btn {
     display: inline-flex;
     align-items: center;

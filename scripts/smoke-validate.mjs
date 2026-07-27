@@ -121,8 +121,8 @@ const roundTrip = JSON.parse(readFileSync(out, 'utf8'))
 assert(roundTrip.metadata.name === 'Smoke Project', 'round trip')
 
 for (const filename of [
-  'EaglesNest_Requirements_v001_2026-07-26.otreq',
-  'EaglesNest_Requirements_STRESS_v001_2026-07-26.otreq',
+  'Requirements_SIMPLE_v001_2026-07-26.otreq',
+  'Requirements_STRESS_v001_2026-07-26.otreq',
 ]) {
   const example = JSON.parse(
     readFileSync(new URL(`../examples/${filename}`, import.meta.url), 'utf8'),

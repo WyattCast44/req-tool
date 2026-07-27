@@ -41,6 +41,10 @@ interface DataTableProps<T> {
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
   /** Persist column widths in localStorage under this key. */
   sizingStorageKey?: string
+  /** Show column-filter toggle and filter inputs. Defaults to true. */
+  enableColumnFilters?: boolean
+  /** Show the Columns visibility picker. Defaults to true. */
+  enableColumnVisibility?: boolean
   toolbarLeft?: ReactNode
   className?: string
 }
@@ -74,6 +78,8 @@ export function DataTable<T>({
   rowSelection: controlledSelection,
   onRowSelectionChange,
   sizingStorageKey,
+  enableColumnFilters = true,
+  enableColumnVisibility = true,
   toolbarLeft,
   className = '',
 }: DataTableProps<T>) {
@@ -224,17 +230,21 @@ export function DataTable<T>({
           </span>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            className={`btn ${filtersVisible || activeColumnFilterCount > 0 ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setFiltersVisible(!filtersVisible)}
-          >
-            {filtersVisible ? 'Hide Filters' : 'Column Filters'}
-            {activeColumnFilterCount > 0 ? ` (${activeColumnFilterCount})` : ''}
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={() => setColumnsOpen((v) => !v)}>
-            Columns
-          </button>
+          {enableColumnFilters && (
+            <button
+              type="button"
+              className={`btn ${filtersVisible || activeColumnFilterCount > 0 ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setFiltersVisible(!filtersVisible)}
+            >
+              {filtersVisible ? 'Hide Filters' : 'Column Filters'}
+              {activeColumnFilterCount > 0 ? ` (${activeColumnFilterCount})` : ''}
+            </button>
+          )}
+          {enableColumnVisibility && (
+            <button type="button" className="btn btn-secondary" onClick={() => setColumnsOpen((v) => !v)}>
+              Columns
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-ghost"
@@ -257,7 +267,7 @@ export function DataTable<T>({
         </div>
       </div>
 
-      {columnsOpen && (
+      {enableColumnVisibility && columnsOpen && (
         <div className="panel grid gap-1.5 p-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
           {hideableColumns.map((column) => (
             <label key={column.id} className="flex items-center gap-1.5 text-[0.75rem]">
@@ -313,7 +323,7 @@ export function DataTable<T>({
                                 {flexRender(header.column.columnDef.header, header.getContext())}
                               </div>
                             )}
-                            {filtersVisible && header.column.getCanFilter() && (
+                            {enableColumnFilters && filtersVisible && header.column.getCanFilter() && (
                               <input
                                 className="field-input column-filter-input"
                                 value={(header.column.getFilterValue() as string) ?? ''}

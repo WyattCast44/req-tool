@@ -1,36 +1,40 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import type { ColumnDef } from '@tanstack/react-table'
 import { useProjectStore } from '../store/projectStore'
 import { filterRequirements } from '../lib/filters'
-import { RELATIONSHIP_TYPES, type RelationshipType } from '../types/project'
+import { RELATIONSHIP_TYPES, type RelationshipType, type Requirement } from '../types/project'
 import { downloadTextFile, matrixToCsv } from '../lib/export'
 import { FilterPanel } from '../components/FilterPanel'
+import { DataTable } from '../components/DataTable'
+import { RequirementHoverLink } from '../components/RequirementHoverLink'
 import { useMatrixUrlState, useRequirementViewState } from '../lib/urlState'
+
+interface MatrixRow {
+  id: string
+  sourceId: string
+  requirement: Requirement
+}
+
+const COL_PAGE_SIZE = 25
 
 export function MatrixPage() {
   const project = useProjectStore((s) => s.project)!
   const { searchQuery, filters, tagLogic, sort } = useRequirementViewState()
   const {
     types: matrixTypes,
-    rowPage: requestedRowPage,
     colPage: requestedColPage,
     setTypes: setMatrixTypes,
-    setRowPage,
     setColPage,
   } = useMatrixUrlState()
-  const pageSize = 25
 
   const filtered = useMemo(
     () => filterRequirements(project, searchQuery, filters, tagLogic, sort),
     [project, searchQuery, filters, tagLogic, sort],
   )
 
-  const rowCount = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const colCount = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const rowPage = Math.min(requestedRowPage, rowCount)
+  const colCount = Math.max(1, Math.ceil(filtered.length / COL_PAGE_SIZE))
   const colPage = Math.min(requestedColPage, colCount)
-  const rows = filtered.slice((rowPage - 1) * pageSize, rowPage * pageSize)
-  const cols = filtered.slice((colPage - 1) * pageSize, colPage * pageSize)
+  const cols = filtered.slice((colPage - 1) * COL_PAGE_SIZE, colPage * COL_PAGE_SIZE)
 
   const relMap = useMemo(() => {
     const map = new Map<string, { type: RelationshipType; id: string; rationale: string }>()
@@ -44,6 +48,74 @@ export function MatrixPage() {
     }
     return map
   }, [project.relationships, matrixTypes])
+
+  const rows = useMemo<MatrixRow[]>(
+    () =>
+      filtered.map((requirement) => ({
+        id: requirement.id,
+        sourceId: requirement.sourceId,
+        requirement,
+      })),
+    [filtered],
+  )
+
+  const columns = useMemo<ColumnDef<MatrixRow>[]>(() => {
+    const defs: ColumnDef<MatrixRow>[] = [
+      {
+        id: 'requirement',
+        accessorKey: 'sourceId',
+        header: 'Requirement',
+        cell: ({ row }) => (
+          <RequirementHoverLink requirement={row.original.requirement} project={project} />
+        ),
+        enableColumnFilter: false,
+        enableHiding: false,
+        size: 160,
+        minSize: 100,
+      },
+    ]
+
+    for (const col of cols) {
+      defs.push({
+        id: col.id,
+        accessorFn: (row) => {
+          if (row.id === col.id) return '—'
+          const hit = relMap.get(`${row.id}|${col.id}`)
+          return hit ? abbreviate(hit.type) : ''
+        },
+        header: () => (
+          <div className="matrix-col-header" title={col.shortTitle || col.sourceId}>
+            <RequirementHoverLink requirement={col} project={project} />
+          </div>
+        ),
+        cell: ({ row }) => {
+          if (row.original.id === col.id) {
+            return <span className="block text-center text-[var(--color-ink-muted)]">—</span>
+          }
+          const hit = relMap.get(`${row.original.id}|${col.id}`)
+          if (!hit) return null
+          return (
+            <span className="flex justify-center">
+              <span
+                className="badge border-[var(--color-accent)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
+                title={hit.rationale || ''}
+              >
+                {abbreviate(hit.type)}
+              </span>
+            </span>
+          )
+        },
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableHiding: false,
+        size: 44,
+        minSize: 36,
+        maxSize: 120,
+      })
+    }
+
+    return defs
+  }, [cols, project, relMap])
 
   const exportRows = project.relationships.filter((r) => {
     if (!matrixTypes.includes(r.type)) return false
@@ -96,77 +168,41 @@ export function MatrixPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 text-sm">
-        <div>
-          Rows page{' '}
-          <button className="btn btn-secondary px-2 py-1" disabled={rowPage <= 1} onClick={() => setRowPage(rowPage - 1)}>
-            Prev
-          </button>{' '}
-          {rowPage}/{rowCount}{' '}
-          <button className="btn btn-secondary px-2 py-1" disabled={rowPage >= rowCount} onClick={() => setRowPage(rowPage + 1)}>
-            Next
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center gap-3 text-sm">
         <div>
           Columns page{' '}
-          <button className="btn btn-secondary px-2 py-1" disabled={colPage <= 1} onClick={() => setColPage(colPage - 1)}>
+          <button
+            type="button"
+            className="btn btn-secondary px-2 py-1"
+            disabled={colPage <= 1}
+            onClick={() => setColPage(colPage - 1)}
+          >
             Prev
           </button>{' '}
           {colPage}/{colCount}{' '}
-          <button className="btn btn-secondary px-2 py-1" disabled={colPage >= colCount} onClick={() => setColPage(colPage + 1)}>
+          <button
+            type="button"
+            className="btn btn-secondary px-2 py-1"
+            disabled={colPage >= colCount}
+            onClick={() => setColPage(colPage + 1)}
+          >
             Next
           </button>
         </div>
       </div>
 
-      <div className="table-wrap max-h-[70vh]">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Row \\ Col</th>
-              {cols.map((c) => (
-                <th key={c.id} title={c.shortTitle}>
-                  <Link to={`/requirements/${c.id}`} className="text-[var(--color-accent)] hover:underline">
-                    {c.sourceId}
-                  </Link>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td className="sticky left-0 z-[1] bg-white font-semibold">
-                  <Link to={`/requirements/${r.id}`} className="text-[var(--color-accent)] hover:underline">
-                    {r.sourceId}
-                  </Link>
-                </td>
-                {cols.map((c) => {
-                  if (r.id === c.id) {
-                    return (
-                      <td key={c.id} className="bg-slate-100 text-center text-slate-400">
-                        —
-                      </td>
-                    )
-                  }
-                  const hit = relMap.get(`${r.id}|${c.id}`)
-                  return (
-                    <td key={c.id} className="text-center" title={hit?.rationale || ''}>
-                      {hit ? (
-                        <span className="badge border-[var(--color-accent)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-                          {abbreviate(hit.type)}
-                        </span>
-                      ) : (
-                        ''
-                      )}
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        data={rows}
+        columns={columns}
+        getRowId={(row) => row.id}
+        pageSize={25}
+        urlStateKey="matrix"
+        sizingStorageKey="matrix"
+        enableColumnFilters={false}
+        enableColumnVisibility={false}
+        emptyMessage="No requirements match the current filters."
+      />
+
       <p className="text-xs text-[var(--color-ink-muted)]">
         Abbreviations: P=Parent of, C=Child of, D=Derived from, S=Supports, Dep=Depends on, X=Conflicts with, Dup=Duplicates.
         Hover a cell for rationale.

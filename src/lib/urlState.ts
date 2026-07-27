@@ -556,14 +556,9 @@ export function useMatrixUrlState() {
   const types = params.has('relationshipType') ? relationshipTypes : [...RELATIONSHIP_TYPES]
   return {
     types,
-    rowPage: positiveInteger(params.get('rowPage'), 1),
     colPage: positiveInteger(params.get('colPage'), 1),
     setTypes: (values: RelationshipType[]) => update((next) => {
       replaceUrlList(next, 'relationshipType', values, RELATIONSHIP_TYPES)
-    }),
-    setRowPage: (page: number) => update((next) => {
-      if (page > 1) next.set('rowPage', String(page))
-      else next.delete('rowPage')
     }),
     setColPage: (page: number) => update((next) => {
       if (page > 1) next.set('colPage', String(page))

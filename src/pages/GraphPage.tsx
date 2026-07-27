@@ -2,85 +2,31 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FuzzySelect } from '../components/FuzzySelect'
 import { FuzzyMultiSelect } from '../components/FuzzyMultiSelect'
+import { RelationshipGraph } from '../components/RelationshipGraph'
 import { RequirementHoverPreview } from '../components/RequirementHoverPreview'
 import { useProjectStore } from '../store/projectStore'
 import {
   RELATIONSHIP_TYPES,
   RECIPROCAL_RELATIONSHIP,
   SOURCE_RELATIONSHIP_TYPES,
-  type RequirementRelationship,
-  type RequirementSourceLink,
 } from '../types/project'
 import { lookupLabel } from '../lib/defaults'
-import {
-  countDistinctLinkedRequirements,
-  requirementSourceLinkEndpoints,
-} from '../lib/sourceLinks'
+import { countDistinctLinkedRequirements } from '../lib/sourceLinks'
+import { buildGraphNeighborhood, type GraphNode } from '../lib/relationshipGraph'
 import { useGraphUrlState } from '../lib/urlState'
 
-interface NodePos {
-  id: string
-  x: number
-  y: number
-  vx: number
-  vy: number
-}
-
-type GraphNode =
-  | { id: string; kind: 'requirement' }
-  | { id: string; kind: 'source' }
-
-type GraphEdge =
-  | {
-      kind: 'relationship'
-      id: string
-      fromId: string
-      toId: string
-      type: string
-      relationship: RequirementRelationship
-    }
-  | {
-      kind: 'source-link'
-      id: string
-      fromId: string
-      toId: string
-      type: string
-      link: RequirementSourceLink
-    }
-
-interface EdgePoint {
+interface ClientPoint {
   x: number
   y: number
 }
 
-function boundaryPoint(
-  node: GraphNode,
-  position: NodePos,
-  toward: NodePos,
-  focused: boolean,
-): EdgePoint {
-  const dx = toward.x - position.x
-  const dy = toward.y - position.y
-  const distance = Math.hypot(dx, dy)
-  if (distance === 0) return { x: position.x, y: position.y }
-
-  const unitX = dx / distance
-  const unitY = dy / distance
-  if (node.kind === 'requirement') {
-    const radius = focused ? 28 : 22
-    return {
-      x: position.x + unitX * radius,
-      y: position.y + unitY * radius,
-    }
+function useStableStringList<T extends string>(values: readonly T[]): readonly T[] {
+  const key = values.join('\u0000')
+  const stableRef = useRef<{ key: string; values: readonly T[] } | null>(null)
+  if (!stableRef.current || stableRef.current.key !== key) {
+    stableRef.current = { key, values }
   }
-
-  const horizontalDistance = unitX === 0 ? Number.POSITIVE_INFINITY : 36 / Math.abs(unitX)
-  const verticalDistance = unitY === 0 ? Number.POSITIVE_INFINITY : 22 / Math.abs(unitY)
-  const edgeDistance = Math.min(horizontalDistance, verticalDistance)
-  return {
-    x: position.x + unitX * edgeDistance,
-    y: position.y + unitY * edgeDistance,
-  }
+  return stableRef.current.values
 }
 
 export function GraphPage() {
@@ -104,12 +50,9 @@ export function GraphPage() {
   } = useGraphUrlState()
   const setGraphFocus = (id: string | null) => setFocus('requirement', id)
   const setGraphSourceFocus = (id: string | null) => setFocus('source', id)
-  const [positions, setPositions] = useState<Record<string, NodePos>>({})
   const [hoveredRequirementId, setHoveredRequirementId] = useState<string | null>(null)
   const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null)
-  const frameRef = useRef<number | null>(null)
   const graphPanelRef = useRef<HTMLDivElement>(null)
-  const graphSvgRef = useRef<SVGSVGElement>(null)
   const hoverClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const cancelRequirementHoverClear = () => {
@@ -134,29 +77,20 @@ export function GraphPage() {
     }, delayMs)
   }
 
-  const anchorPreviewToNode = (requirementId: string) => {
+  const positionRequirementHover = (point: ClientPoint) => {
     const panel = graphPanelRef.current
-    const svg = graphSvgRef.current
-    const node = positions[requirementId]
-    if (!panel || !svg || !node) return
-
-    const ctm = svg.getScreenCTM()
-    if (!ctm) return
-    const point = svg.createSVGPoint()
-    point.x = node.x
-    point.y = node.y
-    const screen = point.matrixTransform(ctm)
+    if (!panel) return
     const panelRect = panel.getBoundingClientRect()
     setHoverPoint({
-      x: screen.x - panelRect.left,
-      y: screen.y - panelRect.top,
+      x: point.x - panelRect.left,
+      y: point.y - panelRect.top,
     })
   }
 
-  const showRequirementHover = (requirementId: string) => {
+  const showRequirementHover = (requirementId: string, point: ClientPoint) => {
     cancelRequirementHoverClear()
     setHoveredRequirementId(requirementId)
-    anchorPreviewToNode(requirementId)
+    positionRequirementHover(point)
   }
 
   useEffect(() => {
@@ -165,27 +99,6 @@ export function GraphPage() {
     }
   }, [])
 
-  // Keep the anchored preview beside the node while the layout animates.
-  useEffect(() => {
-    if (!hoveredRequirementId) return
-    const panel = graphPanelRef.current
-    const svg = graphSvgRef.current
-    const node = positions[hoveredRequirementId]
-    if (!panel || !svg || !node) return
-
-    const ctm = svg.getScreenCTM()
-    if (!ctm) return
-    const point = svg.createSVGPoint()
-    point.x = node.x
-    point.y = node.y
-    const screen = point.matrixTransform(ctm)
-    const panelRect = panel.getBoundingClientRect()
-    setHoverPoint({
-      x: screen.x - panelRect.left,
-      y: screen.y - panelRect.top,
-    })
-  }, [hoveredRequirementId, positions])
-
   const sources = project.sources ?? []
   const sourceLinks = project.requirementSourceLinks ?? []
 
@@ -193,6 +106,10 @@ export function GraphPage() {
   const focusId =
     graphFocusId ||
     (focusKind === 'source' ? sources[0]?.id || null : project.requirements[0]?.id || null)
+  const stableGraphTypes = useStableStringList(graphTypes)
+  const stableSourceLinkTypes = useStableStringList(sourceLinkTypes)
+  const stableStatusFilter = useStableStringList(statusFilter)
+  const stableTagFilter = useStableStringList(tagFilter)
 
   const requirementOptions = useMemo(
     () =>
@@ -213,236 +130,33 @@ export function GraphPage() {
     [project.sources],
   )
 
-  const neighborhood = useMemo(() => {
-    const sourcesList = project.sources ?? []
-    const sourceLinksList = project.requirementSourceLinks ?? []
-    const empty = {
-      nodes: [] as GraphNode[],
-      edges: [] as GraphEdge[],
-      focusNodeId: null as string | null,
-    }
-    if (!focusId) return empty
-
-    const allowedRel = new Set(graphTypes)
-    const allowedSourceLinks = new Set(sourceLinkTypes)
-    const reqNodeIds = new Set<string>()
-    const edges: GraphEdge[] = []
-    let focusNodeId = focusId
-
-    if (focusKind === 'source') {
-      const source = sourcesList.find((item) => item.id === focusId)
-      if (!source) return empty
-      focusNodeId = source.id
-
-      const linked = sourceLinksList.filter(
-        (link) => link.sourceId === focusId && allowedSourceLinks.has(link.type),
-      )
-      for (const link of linked) {
-        reqNodeIds.add(link.requirementId)
-        edges.push({
-          kind: 'source-link',
-          id: link.id,
-          ...requirementSourceLinkEndpoints(link),
-          type: link.type,
-          link,
-        })
-      }
-
-      // Depth 1 = source + directly linked requirements.
-      // Deeper levels expand requirement relationships from those seeds.
-      let frontier = Array.from(reqNodeIds)
-      for (let depth = 1; depth < graphDepth; depth += 1) {
-        const next: string[] = []
-        for (const id of frontier) {
-          for (const rel of project.relationships) {
-            if (!allowedRel.has(rel.type)) continue
-            let other: string | null = null
-            if (rel.sourceRequirementId === id) other = rel.targetRequirementId
-            else if (rel.targetRequirementId === id) other = rel.sourceRequirementId
-            if (other && !reqNodeIds.has(other)) {
-              reqNodeIds.add(other)
-              next.push(other)
-            }
-          }
-        }
-        frontier = next
-      }
-    } else {
-      reqNodeIds.add(focusId)
-      let frontier = [focusId]
-      for (let depth = 0; depth < graphDepth; depth += 1) {
-        const next: string[] = []
-        for (const id of frontier) {
-          for (const rel of project.relationships) {
-            if (!allowedRel.has(rel.type)) continue
-            let other: string | null = null
-            if (rel.sourceRequirementId === id) other = rel.targetRequirementId
-            else if (rel.targetRequirementId === id) other = rel.sourceRequirementId
-            if (other && !reqNodeIds.has(other)) {
-              reqNodeIds.add(other)
-              next.push(other)
-            }
-          }
-        }
-        frontier = next
-      }
-    }
-
-    let requirementIds = Array.from(reqNodeIds)
-    if (statusFilter.length) {
-      requirementIds = requirementIds.filter((id) => {
-        const req = project.requirements.find((r) => r.id === id)
-        return req && statusFilter.includes(req.statusId)
-      })
-      if (focusKind === 'requirement' && !requirementIds.includes(focusId)) {
-        requirementIds = [focusId, ...requirementIds]
-      }
-    }
-    if (tagFilter.length) {
-      requirementIds = requirementIds.filter((id) => {
-        const req = project.requirements.find((r) => r.id === id)
-        return req && tagFilter.some((t) => req.tagIds.includes(t))
-      })
-      if (focusKind === 'requirement' && !requirementIds.includes(focusId)) {
-        requirementIds = [focusId, ...requirementIds]
-      }
-    }
-
-    const visibleReqIds = new Set(requirementIds)
-    for (const rel of project.relationships) {
-      if (!allowedRel.has(rel.type)) continue
-      if (!visibleReqIds.has(rel.sourceRequirementId) || !visibleReqIds.has(rel.targetRequirementId)) {
-        continue
-      }
-      edges.push({
-        kind: 'relationship',
-        id: rel.id,
-        fromId: rel.sourceRequirementId,
-        toId: rel.targetRequirementId,
-        type: rel.type,
-        relationship: rel,
-      })
-    }
-
-    const filteredEdges =
-      focusKind === 'source'
-        ? edges.filter((edge) =>
-            edge.kind === 'source-link'
-              ? visibleReqIds.has(edge.fromId)
-              : visibleReqIds.has(edge.fromId) && visibleReqIds.has(edge.toId),
-          )
-        : edges.filter(
-            (edge) =>
-              edge.kind === 'relationship' &&
-              visibleReqIds.has(edge.fromId) &&
-              visibleReqIds.has(edge.toId),
-          )
-
-    const nodes: GraphNode[] = [
-      ...(focusKind === 'source' ? [{ id: focusId, kind: 'source' as const }] : []),
-      ...requirementIds.map((id) => ({ id, kind: 'requirement' as const })),
-    ]
-
-    return { nodes, edges: filteredEdges, focusNodeId }
-  }, [focusId, focusKind, graphDepth, graphTypes, project, sourceLinkTypes, statusFilter, tagFilter])
-
-  useEffect(() => {
-    const width = 900
-    const height = 560
-    const cx = width / 2
-    const cy = height / 2
-    const initial: Record<string, NodePos> = {}
-    neighborhood.nodes.forEach((node, index) => {
-      const angle = (index / Math.max(neighborhood.nodes.length, 1)) * Math.PI * 2
-      const radius = node.id === neighborhood.focusNodeId ? 0 : 140 + (index % 5) * 28
-      initial[node.id] = {
-        id: node.id,
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
-        vx: 0,
-        vy: 0,
-      }
-    })
-    setPositions(initial)
-  }, [neighborhood.nodes, neighborhood.focusNodeId])
-
-  useEffect(() => {
-    const ids = neighborhood.nodes.map((node) => node.id)
-    if (ids.length === 0) return
-    const focusNodeId = neighborhood.focusNodeId
-
-    let frames = 0
-    const step = () => {
-      frames += 1
-      setPositions((prev) => {
-        const next: Record<string, NodePos> = {}
-        for (const id of ids) {
-          const p = prev[id]
-          if (!p) continue
-          next[id] = { ...p }
-        }
-        for (let i = 0; i < ids.length; i += 1) {
-          for (let j = i + 1; j < ids.length; j += 1) {
-            const a = next[ids[i]]
-            const b = next[ids[j]]
-            if (!a || !b) continue
-            let dx = a.x - b.x
-            let dy = a.y - b.y
-            let dist = Math.sqrt(dx * dx + dy * dy) || 0.01
-            const force = 4000 / (dist * dist)
-            dx = (dx / dist) * force
-            dy = (dy / dist) * force
-            a.vx += dx
-            a.vy += dy
-            b.vx -= dx
-            b.vy -= dy
-          }
-        }
-        for (const edge of neighborhood.edges) {
-          const a = next[edge.fromId]
-          const b = next[edge.toId]
-          if (!a || !b) continue
-          const dx = b.x - a.x
-          const dy = b.y - a.y
-          const dist = Math.sqrt(dx * dx + dy * dy) || 0.01
-          const force = (dist - 160) * 0.02
-          const fx = (dx / dist) * force
-          const fy = (dy / dist) * force
-          a.vx += fx
-          a.vy += fy
-          b.vx -= fx
-          b.vy -= fy
-        }
-        for (const id of ids) {
-          const p = next[id]
-          if (!p) continue
-          const focused = id === focusNodeId
-          p.vx += (450 - p.x) * (focused ? 0.05 : 0.005)
-          p.vy += (280 - p.y) * (focused ? 0.05 : 0.005)
-          p.vx *= 0.8
-          p.vy *= 0.8
-          p.x += p.vx
-          p.y += p.vy
-          p.x = Math.max(40, Math.min(860, p.x))
-          p.y = Math.max(40, Math.min(520, p.y))
-        }
-        return next
-      })
-      if (frames < 120) frameRef.current = requestAnimationFrame(step)
-    }
-    frameRef.current = requestAnimationFrame(step)
-    return () => {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current)
-    }
-  }, [neighborhood.nodes, neighborhood.edges, neighborhood.focusNodeId])
+  const neighborhood = useMemo(
+    () =>
+      buildGraphNeighborhood({
+        project,
+        focusId,
+        focusKind,
+        depth: graphDepth,
+        relationshipTypes: stableGraphTypes,
+        sourceLinkTypes: stableSourceLinkTypes,
+        statusIds: stableStatusFilter,
+        tagIds: stableTagFilter,
+      }),
+    [
+      focusId,
+      focusKind,
+      graphDepth,
+      project,
+      stableGraphTypes,
+      stableSourceLinkTypes,
+      stableStatusFilter,
+      stableTagFilter,
+    ],
+  )
 
   const selectedEdgeObj = selectedEdge
     ? neighborhood.edges.find((edge) => edge.id === selectedEdge) || null
     : null
-  const graphNodesById = useMemo(
-    () => new Map(neighborhood.nodes.map((node) => [node.id, node])),
-    [neighborhood.nodes],
-  )
 
   const focusedSource =
     focusKind === 'source' && focusId ? sources.find((source) => source.id === focusId) || null : null
@@ -733,186 +447,28 @@ export function GraphPage() {
                 : 'No requirements to display.'}
             </div>
           ) : (
-            <svg
-              ref={graphSvgRef}
-              viewBox="0 0 900 560"
-              className="h-[min(70vh,560px)] w-full bg-[linear-gradient(180deg,#f8fafc,#eef3f8)] xl:h-[min(75vh,640px)]"
-            >
-              <defs>
-                <marker
-                  id="arrow"
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="8"
-                  refY="4"
-                  orient="auto"
-                  markerUnits="userSpaceOnUse"
-                >
-                  <path d="M0,0 L8,4 L0,8 Z" fill="#1f5f8b" />
-                </marker>
-                <marker
-                  id="arrow-source"
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="8"
-                  refY="4"
-                  orient="auto"
-                  markerUnits="userSpaceOnUse"
-                >
-                  <path d="M0,0 L8,4 L0,8 Z" fill="#9a6b2f" />
-                </marker>
-                <marker
-                  id="arrow-selected"
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="8"
-                  refY="4"
-                  orient="auto"
-                  markerUnits="userSpaceOnUse"
-                >
-                  <path d="M0,0 L8,4 L0,8 Z" fill="#7a3e00" />
-                </marker>
-              </defs>
-              {neighborhood.edges.map((edge) => {
-                const arrowFromId =
-                  edge.kind === 'relationship' && edge.type === 'Child of'
-                    ? edge.toId
-                    : edge.fromId
-                const arrowToId =
-                  edge.kind === 'relationship' && edge.type === 'Child of'
-                    ? edge.fromId
-                    : edge.toId
-                const arrowFrom = positions[arrowFromId]
-                const arrowTo = positions[arrowToId]
-                const fromNode = graphNodesById.get(arrowFromId)
-                const toNode = graphNodesById.get(arrowToId)
-                if (!arrowFrom || !arrowTo || !fromNode || !toNode) return null
-                const start = boundaryPoint(
-                  fromNode,
-                  arrowFrom,
-                  arrowTo,
-                  arrowFromId === neighborhood.focusNodeId,
-                )
-                const end = boundaryPoint(
-                  toNode,
-                  arrowTo,
-                  arrowFrom,
-                  arrowToId === neighborhood.focusNodeId,
-                )
-                const isSourceLink = edge.kind === 'source-link'
-                const selected = selectedEdge === edge.id
-                return (
-                  <g key={edge.id}>
-                    <line
-                      x1={start.x}
-                      y1={start.y}
-                      x2={end.x}
-                      y2={end.y}
-                      stroke={selected ? '#7a3e00' : isSourceLink ? '#9a6b2f' : '#1f5f8b'}
-                      strokeWidth={selected ? 2.5 : 1.5}
-                      strokeDasharray={isSourceLink ? '5 4' : undefined}
-                      markerEnd={
-                        selected
-                          ? 'url(#arrow-selected)'
-                          : isSourceLink
-                            ? 'url(#arrow-source)'
-                            : 'url(#arrow)'
-                      }
-                      className="cursor-pointer"
-                      onClick={() => setSelectedEdge(edge.id)}
-                    />
-                    <text
-                      x={(arrowFrom.x + arrowTo.x) / 2}
-                      y={(arrowFrom.y + arrowTo.y) / 2 - 6}
-                      textAnchor="middle"
-                      fontSize="10"
-                      fill="#4a5568"
-                    >
-                      {edge.kind === 'relationship' && edge.type === 'Child of'
-                        ? 'Parent of'
-                        : edge.type}
-                    </text>
-                  </g>
-                )
-              })}
-              {neighborhood.nodes.map((node) => {
-                const p = positions[node.id]
-                if (!p) return null
-                const focused = node.id === neighborhood.focusNodeId
-
+            <RelationshipGraph
+              neighborhood={neighborhood}
+              selectedEdgeId={selectedEdge}
+              onSelectNode={(node: GraphNode) => {
                 if (node.kind === 'source') {
-                  const source = sources.find((item) => item.id === node.id)
-                  if (!source) return null
-                  const label = source.identifier || source.title
-                  return (
-                    <g
-                      key={node.id}
-                      className="cursor-pointer"
-                      onMouseEnter={clearRequirementHover}
-                      onClick={() => setGraphSourceFocus(node.id)}
-                      onDoubleClick={() => {
-                        window.location.hash = `#/sources/${node.id}`
-                      }}
-                    >
-                      <rect
-                        x={p.x - 36}
-                        y={p.y - 22}
-                        width={72}
-                        height={44}
-                        rx={4}
-                        fill={focused ? '#7a3e00' : '#ffffff'}
-                        stroke={focused ? '#5c2e00' : '#7a3e00'}
-                        strokeWidth="2"
-                      />
-                      <text
-                        x={p.x}
-                        y={p.y + 4}
-                        textAnchor="middle"
-                        fontSize="10"
-                        fontWeight="700"
-                        fill={focused ? '#ffffff' : '#1a2332'}
-                      >
-                        {label.length > 9 ? `${label.slice(0, 9)}…` : label}
-                      </text>
-                    </g>
-                  )
+                  clearRequirementHover()
+                  setGraphSourceFocus(node.id)
+                } else {
+                  setGraphFocus(node.id)
                 }
-
-                const req = project.requirements.find((r) => r.id === node.id)
-                if (!req) return null
-                return (
-                  <g
-                    key={node.id}
-                    className="cursor-pointer"
-                    onMouseEnter={() => showRequirementHover(node.id)}
-                    onMouseLeave={() => scheduleRequirementHoverClear(450)}
-                    onClick={() => setGraphFocus(node.id)}
-                    onDoubleClick={() => {
-                      window.location.hash = `#/requirements/${node.id}`
-                    }}
-                  >
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={focused ? 28 : 22}
-                      fill={focused ? '#1f5f8b' : '#ffffff'}
-                      stroke={focused ? '#174a6c' : '#1f5f8b'}
-                      strokeWidth="2"
-                    />
-                    <text
-                      x={p.x}
-                      y={p.y + 4}
-                      textAnchor="middle"
-                      fontSize="10"
-                      fontWeight="700"
-                      fill={focused ? '#ffffff' : '#1a2332'}
-                    >
-                      {req.sourceId.length > 8 ? `${req.sourceId.slice(0, 8)}…` : req.sourceId}
-                    </text>
-                  </g>
-                )
-              })}
-            </svg>
+              }}
+              onOpenNode={(node: GraphNode) => {
+                window.location.hash =
+                  node.kind === 'source'
+                    ? `#/sources/${node.id}`
+                    : `#/requirements/${node.id}`
+              }}
+              onSelectEdge={setSelectedEdge}
+              onRequirementHover={showRequirementHover}
+              onRequirementMove={positionRequirementHover}
+              onRequirementLeave={() => scheduleRequirementHoverClear(450)}
+            />
           )}
           {hoveredRequirement && hoverPreviewStyle && (
             <div
