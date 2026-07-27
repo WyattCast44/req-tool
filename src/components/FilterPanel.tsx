@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import { useProjectStore } from '../store/projectStore'
-import type { TagLogic } from '../types/project'
+import type { ProjectData, RequirementFilters, TagLogic } from '../types/project'
+import { lookupLabel } from '../lib/defaults'
 
 function MultiSelect({
   label,
@@ -14,7 +16,12 @@ function MultiSelect({
 }) {
   return (
     <label className="block">
-      <span className="field-label">{label}</span>
+      <span className="field-label">
+        {label}
+        {values.length > 0 ? (
+          <span className="ml-1 text-[var(--color-accent)]">({values.length})</span>
+        ) : null}
+      </span>
       <select
         multiple
         className="field-input min-h-[4.25rem] text-[0.75rem]"
@@ -31,6 +38,120 @@ function MultiSelect({
       </select>
     </label>
   )
+}
+
+interface ActiveChip {
+  id: string
+  label: string
+  onClear: () => void
+}
+
+function lookupIds(
+  project: ProjectData,
+  key: keyof ProjectData['lookups'],
+  ids: string[],
+): string {
+  return ids.map((id) => lookupLabel(project.lookups[key], id)).join(', ')
+}
+
+function buildActiveChips(
+  project: ProjectData,
+  filters: RequirementFilters,
+  tagLogic: TagLogic,
+  setFilters: (patch: Partial<RequirementFilters>) => void,
+  setTagLogic: (logic: TagLogic) => void,
+): ActiveChip[] {
+  const chips: ActiveChip[] = []
+
+  const pushMulti = (
+    key: keyof RequirementFilters,
+    fieldLabel: string,
+    values: string[],
+    format: (ids: string[]) => string,
+  ) => {
+    if (!values.length) return
+    chips.push({
+      id: String(key),
+      label: `${fieldLabel}: ${format(values)}`,
+      onClear: () => setFilters({ [key]: [] } as Partial<RequirementFilters>),
+    })
+  }
+
+  pushMulti('statusIds', 'Status', filters.statusIds, (ids) => lookupIds(project, 'statuses', ids))
+  pushMulti('classificationIds', 'Classification', filters.classificationIds, (ids) =>
+    lookupIds(project, 'classifications', ids),
+  )
+  pushMulti('typeIds', 'Type', filters.typeIds, (ids) => lookupIds(project, 'types', ids))
+  pushMulti('priorityIds', 'Priority', filters.priorityIds, (ids) =>
+    lookupIds(project, 'priorities', ids),
+  )
+  pushMulti('verificationMethodIds', 'Verification', filters.verificationMethodIds, (ids) =>
+    lookupIds(project, 'verificationMethods', ids),
+  )
+  pushMulti('assessmentResultIds', 'Assessment', filters.assessmentResultIds, (ids) =>
+    lookupIds(project, 'assessmentResults', ids),
+  )
+  pushMulti('testActivityIds', 'Test activity', filters.testActivityIds, (ids) =>
+    ids
+      .map((id) => project.testActivities.find((t) => t.id === id)?.title || id)
+      .join(', '),
+  )
+  pushMulti('testPhaseIds', 'Test phase', filters.testPhaseIds, (ids) =>
+    lookupIds(project, 'testPhases', ids),
+  )
+  pushMulti('owners', 'Owner', filters.owners, (ids) => ids.join(', '))
+  pushMulti('sourceDocuments', 'Source doc', filters.sourceDocuments, (ids) => ids.join(', '))
+  pushMulti('tagIds', 'Tags', filters.tagIds, (ids) =>
+    ids.map((id) => project.tags.find((t) => t.id === id)?.name || id).join(', '),
+  )
+
+  if (filters.tagIds.length && tagLogic !== 'any') {
+    const logicLabel =
+      tagLogic === 'all' ? 'Match all tags' : tagLogic === 'exclude' ? 'Exclude tags' : tagLogic
+    chips.push({
+      id: 'tagLogic',
+      label: `Tag logic: ${logicLabel}`,
+      onClear: () => setTagLogic('any'),
+    })
+  }
+
+  if (filters.createdFrom) {
+    chips.push({
+      id: 'createdFrom',
+      label: `Created from: ${filters.createdFrom}`,
+      onClear: () => setFilters({ createdFrom: '' }),
+    })
+  }
+  if (filters.createdTo) {
+    chips.push({
+      id: 'createdTo',
+      label: `Created to: ${filters.createdTo}`,
+      onClear: () => setFilters({ createdTo: '' }),
+    })
+  }
+  if (filters.modifiedFrom) {
+    chips.push({
+      id: 'modifiedFrom',
+      label: `Modified from: ${filters.modifiedFrom}`,
+      onClear: () => setFilters({ modifiedFrom: '' }),
+    })
+  }
+  if (filters.modifiedTo) {
+    chips.push({
+      id: 'modifiedTo',
+      label: `Modified to: ${filters.modifiedTo}`,
+      onClear: () => setFilters({ modifiedTo: '' }),
+    })
+  }
+  if (filters.gapKey) {
+    chips.push({
+      id: 'gapKey',
+      label: `Gap: ${filters.gapKey}`,
+      onClear: () => setFilters({ gapKey: null }),
+    })
+  }
+
+  return chips
 }
 
 export function FilterPanel() {
@@ -53,6 +174,13 @@ export function FilterPanel() {
   const sourceDocuments = Array.from(
     new Set(project.requirements.map((r) => r.sourceDocument).filter(Boolean)),
   ).sort()
+
+  const activeChips = useMemo(
+    () => buildActiveChips(project, filters, tagLogic, setFilters, setTagLogic),
+    [project, filters, tagLogic, setFilters, setTagLogic],
+  )
+  const activeCount = activeChips.length
+  const hasAnyFilter = activeCount > 0 || Boolean(searchQuery.trim())
 
   return (
     <div className="panel space-y-2 p-2.5">
@@ -84,14 +212,49 @@ export function FilterPanel() {
             ))}
           </select>
         </label>
-        <button type="button" className="btn btn-secondary" onClick={resetFilters}>
-          Clear
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={resetFilters}
+          disabled={!hasAnyFilter && !activeSavedViewId}
+          title="Clear list search, field filters, tags, and saved view"
+        >
+          Clear Filters
         </button>
       </div>
+
+      {activeCount > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded border border-[var(--color-line-strong)] bg-[var(--color-accent-soft)] px-2 py-1.5">
+          <span className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)]">
+            {activeCount} field filter{activeCount === 1 ? '' : 's'}
+          </span>
+          {activeChips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              className="inline-flex max-w-full items-center gap-1 rounded border border-[var(--color-line-strong)] bg-white px-1.5 py-0.5 text-left text-[0.7rem] text-[var(--color-ink)] hover:border-[var(--color-accent)]"
+              onClick={chip.onClear}
+              title={`Clear ${chip.label}`}
+            >
+              <span className="truncate">{chip.label}</span>
+              <span className="shrink-0 text-[var(--color-ink-muted)]" aria-hidden>
+                ×
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <details>
         <summary className="cursor-pointer text-[0.72rem] font-semibold text-[var(--color-accent)]">
           Field filters & tags
+          {activeCount > 0 ? (
+            <span className="ml-1.5 rounded bg-[var(--color-accent)] px-1.5 py-0.5 text-[0.65rem] font-bold tracking-normal text-white">
+              {activeCount} active
+            </span>
+          ) : (
+            <span className="ml-1.5 font-normal text-[var(--color-ink-muted)]">none applied</span>
+          )}
         </summary>
         <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <MultiSelect
@@ -209,11 +372,6 @@ export function FilterPanel() {
             />
           </label>
         </div>
-        {filters.gapKey && (
-          <p className="mt-3 text-sm text-[var(--color-warn)]">
-            Gap filter active: <strong>{filters.gapKey}</strong>
-          </p>
-        )}
       </details>
     </div>
   )

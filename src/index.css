@@ -35,6 +35,10 @@
     height: 100%;
   }
 
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     margin: 0;
     color: var(--color-ink);
@@ -411,8 +415,17 @@
   }
 
   @media print {
+    @page {
+      margin: 0.6in 0.5in;
+    }
+
     body {
       background: white !important;
+    }
+
+    body:has(.print-classification-banner) {
+      padding-top: 0.35in;
+      padding-bottom: 0.35in;
     }
 
     .no-print {
@@ -426,6 +439,24 @@
     .print-area {
       box-shadow: none !important;
       border: none !important;
+    }
+
+    /* Fixed banners repeat on every printed page */
+    .print-classification-banner {
+      position: fixed;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .print-classification-banner-top {
+      top: 0;
+    }
+
+    .print-classification-banner-bottom {
+      bottom: 0;
     }
   }
 

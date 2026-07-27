@@ -10,7 +10,7 @@ import { lookupByValue } from './defaults'
 
 export interface RelationshipFlags {
   hasAny: boolean
-  hasDerivedFromAsTarget: boolean
+  hasDerivedFromSource: boolean
   hasConflictOrDuplicate: boolean
   hasBroken: boolean
 }
@@ -32,7 +32,7 @@ export interface ProjectIndexes {
 function emptyFlags(): RelationshipFlags {
   return {
     hasAny: false,
-    hasDerivedFromAsTarget: false,
+    hasDerivedFromSource: false,
     hasConflictOrDuplicate: false,
     hasBroken: false,
   }
@@ -110,7 +110,7 @@ export function buildProjectIndexes(project: ProjectData): ProjectIndexes {
       targetFlags.hasBroken = true
     }
     if (rel.type === 'Derived from') {
-      targetFlags.hasDerivedFromAsTarget = true
+      sourceFlags.hasDerivedFromSource = true
     }
     if (rel.type === 'Conflicts with' || rel.type === 'Duplicates') {
       sourceFlags.hasConflictOrDuplicate = true
@@ -151,7 +151,7 @@ export function matchesGapIndexed(
 
   switch (gapKey) {
     case 'derived-without-source':
-      return req.isDerived && !flags.hasDerivedFromAsTarget
+      return req.isDerived && !flags.hasDerivedFromSource
     case 'no-relationships':
       return !flags.hasAny
     case 'active-no-activity':

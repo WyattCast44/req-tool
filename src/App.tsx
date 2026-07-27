@@ -12,6 +12,7 @@ import { GraphPage } from './pages/GraphPage'
 import { ActivitiesPage } from './pages/ActivitiesPage'
 import { SavedViewsPage } from './pages/SavedViewsPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { PrintReportPage } from './pages/PrintReportPage'
 import { LookupsPage } from './pages/LookupsPage'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -58,6 +59,14 @@ export default function App() {
           <Route path="/lookups" element={<LookupsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
+        <Route
+          path="/print"
+          element={
+            <RequireProject>
+              <PrintReportPage />
+            </RequireProject>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>

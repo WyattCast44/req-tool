@@ -141,6 +141,10 @@ export function DataTable<T>({
   const filteredCount = table.getFilteredRowModel().rows.length
   const pageCount = table.getPageCount()
   const pageIndex = table.getState().pagination.pageIndex
+  const activeColumnFilterCount = columnFilters.filter((f) => {
+    if (typeof f.value === 'string') return f.value.trim().length > 0
+    return f.value != null && f.value !== ''
+  }).length
 
   return (
     <div className={`space-y-1.5 ${className}`}>
@@ -150,6 +154,9 @@ export function DataTable<T>({
           <span className="text-[0.72rem] text-[var(--color-ink-muted)]">
             {filteredCount} row{filteredCount === 1 ? '' : 's'}
             {filteredCount !== data.length ? ` (of ${data.length})` : ''}
+            {activeColumnFilterCount > 0
+              ? ` · ${activeColumnFilterCount} column filter${activeColumnFilterCount === 1 ? '' : 's'}`
+              : ''}
             {enableRowSelection && Object.keys(rowSelection).length > 0
               ? ` · ${Object.keys(rowSelection).length} selected`
               : ''}
@@ -158,10 +165,11 @@ export function DataTable<T>({
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
-            className={`btn ${showColumnFilters ? 'btn-primary' : 'btn-secondary'}`}
+            className={`btn ${showColumnFilters || activeColumnFilterCount > 0 ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setShowColumnFilters((v) => !v)}
           >
             {showColumnFilters ? 'Hide Filters' : 'Column Filters'}
+            {activeColumnFilterCount > 0 ? ` (${activeColumnFilterCount})` : ''}
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => setColumnsOpen((v) => !v)}>
             Columns
@@ -169,6 +177,7 @@ export function DataTable<T>({
           <button
             type="button"
             className="btn btn-ghost"
+            title="Reset column filters, sorting, and column widths only. List/field filters above are unchanged."
             onClick={() => {
               setColumnFilters([])
               setSorting([])
@@ -182,7 +191,7 @@ export function DataTable<T>({
               }
             }}
           >
-            Reset Table
+            Reset Columns
           </button>
         </div>
       </div>
@@ -224,20 +233,25 @@ export function DataTable<T>({
                       >
                         {header.isPlaceholder ? null : (
                           <div className="flex flex-col gap-0.5">
-                            <button
-                              type="button"
-                              className={`header-sort-btn ${header.column.getCanSort() ? 'sortable' : ''}`}
-                              onClick={header.column.getToggleSortingHandler()}
-                              disabled={!header.column.getCanSort()}
-                            >
-                              <span>
+                            {header.column.getCanSort() ? (
+                              <button
+                                type="button"
+                                className="header-sort-btn sortable"
+                                onClick={header.column.getToggleSortingHandler()}
+                              >
+                                <span>
+                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                </span>
+                                {{
+                                  asc: ' ↑',
+                                  desc: ' ↓',
+                                }[header.column.getIsSorted() as string] ?? ' ↕'}
+                              </button>
+                            ) : (
+                              <div className="header-sort-btn">
                                 {flexRender(header.column.columnDef.header, header.getContext())}
-                              </span>
-                              {{
-                                asc: ' ↑',
-                                desc: ' ↓',
-                              }[header.column.getIsSorted() as string] ?? (header.column.getCanSort() ? ' ↕' : null)}
-                            </button>
+                              </div>
+                            )}
                             {showColumnFilters && header.column.getCanFilter() && (
                               <input
                                 className="field-input column-filter-input"

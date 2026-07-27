@@ -144,6 +144,7 @@ export function RequirementsPage() {
               if (el) el.indeterminate = table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()
             }}
             onChange={table.getToggleAllPageRowsSelectedHandler()}
+            onClick={(e) => e.stopPropagation()}
           />
         ),
         cell: ({ row }) => (
@@ -152,6 +153,7 @@ export function RequirementsPage() {
             aria-label={`Select ${row.original.sourceId}`}
             checked={row.getIsSelected()}
             onChange={row.getToggleSelectedHandler()}
+            onClick={(e) => e.stopPropagation()}
           />
         ),
         enableSorting: false,
@@ -309,7 +311,10 @@ export function RequirementsPage() {
         <div>
           <h2 className="page-title">Requirements</h2>
           <p className="page-subtitle">
-            Domain-filtered set: {filteredRequirements.length} of {project.requirements.length}
+            Showing {filteredRequirements.length} of {project.requirements.length}
+            {filteredRequirements.length !== project.requirements.length
+              ? ' · filters or search are narrowing this list'
+              : ''}
             {searchQuery ? ` · search “${searchQuery}”` : ''}
           </p>
         </div>
@@ -336,6 +341,45 @@ export function RequirementsPage() {
       </div>
 
       <FilterPanel />
+
+      {selectedRequirementIds.length > 0 && (
+        <div className="panel flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+          <div className="text-sm">
+            <span className="font-semibold">{selectedRequirementIds.length}</span>
+            <span className="text-[var(--color-ink-muted)]">
+              {' '}
+              requirement{selectedRequirementIds.length === 1 ? '' : 's'} selected
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() =>
+                navigate(`/print?ids=${encodeURIComponent(selectedRequirementIds.join(','))}`)
+              }
+            >
+              Print Report
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() =>
+                navigate(`/reports?ids=${encodeURIComponent(selectedRequirementIds.join(','))}`)
+              }
+            >
+              Export Selected
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setSelectedRequirementIds([])}
+            >
+              Clear Selection
+            </button>
+          </div>
+        </div>
+      )}
 
       {filteredRequirements.length === 0 ? (
         <EmptyState

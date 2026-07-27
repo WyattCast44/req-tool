@@ -172,7 +172,7 @@ export function RequirementDetailPage() {
               >
                 Open in Graph
               </button>
-              <Link className="btn btn-secondary" to={`/reports?ids=${reqId}`}>
+              <Link className="btn btn-secondary" to={`/print?ids=${reqId}`}>
                 Print Report
               </Link>
             </>

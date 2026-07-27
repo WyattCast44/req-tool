@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
 import { formatDateTime } from '../lib/ids'
@@ -30,11 +31,22 @@ export function AppShell() {
   const setToast = useProjectStore((s) => s.setToast)
   const loadIssues = useProjectStore((s) => s.loadIssues)
   const discardLocalAndClear = useProjectStore((s) => s.discardLocalAndClear)
+  const [confirmClose, setConfirmClose] = useState(false)
+
+  useEffect(() => {
+    if (!confirmClose) return
+    const timer = window.setTimeout(() => setConfirmClose(false), 4000)
+    return () => window.clearTimeout(timer)
+  }, [confirmClose])
 
   if (!project) return <Outlet />
 
   const label = stateLabel()
   const editing = mode === 'edit'
+
+  const closeProject = () => {
+    void discardLocalAndClear().then(() => navigate('/welcome'))
+  }
 
   return (
     <div className={`app-shell ${editing ? 'edit-active' : ''}`}>
@@ -61,7 +73,7 @@ export function AppShell() {
 
           <GlobalSearch />
 
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5">
             <span
               className={`badge ${
                 hasUnexportedChanges
@@ -76,33 +88,52 @@ export function AppShell() {
               {hasUnexportedChanges ? ' · EXPORT REQ' : ''}
             </span>
             {editing ? (
-              <button type="button" className="btn btn-secondary" onClick={exitEditMode}>
-                Exit Edit
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={exitEditMode}
+                title="Leave Edit Mode and keep your local working changes"
+              >
+                Exit Edit Mode & Save
               </button>
             ) : (
               <button type="button" className="btn btn-primary" onClick={enterEditMode}>
                 Edit Mode
               </button>
             )}
-            <button type="button" className="btn btn-secondary" onClick={() => void exportProject()}>
-              Export
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              title={label}
-              onClick={() => {
-                if (
-                  hasUnexportedChanges &&
-                  !window.confirm('Discard local working copy and return to the welcome screen?')
-                ) {
-                  return
-                }
-                void discardLocalAndClear().then(() => navigate('/welcome'))
-              }}
-            >
-              Close
-            </button>
+            {!editing && (
+              <>
+                <button type="button" className="btn btn-secondary" onClick={() => void exportProject()}>
+                  Export
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger shrink-0"
+                  title={
+                    confirmClose
+                      ? hasUnexportedChanges
+                        ? 'Click again to discard local changes and close'
+                        : 'Click again to close the project'
+                      : label
+                  }
+                  onClick={() => {
+                    if (!confirmClose) {
+                      setConfirmClose(true)
+                      return
+                    }
+                    setConfirmClose(false)
+                    closeProject()
+                  }}
+                  onBlur={() => setConfirmClose(false)}
+                >
+                  {confirmClose
+                    ? hasUnexportedChanges
+                      ? 'Confirm Discard & Close'
+                      : 'Confirm Close'
+                    : 'Close'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
