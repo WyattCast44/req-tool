@@ -14,7 +14,8 @@ import {
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { clampPageIndex, useTableUrlState } from '../lib/urlState'
 
 export type { ColumnDef, VisibilityState, SortingState }
 
@@ -31,6 +32,10 @@ interface DataTableProps<T> {
   /** Controlled sorting. When omitted, managed internally. */
   sorting?: SortingState
   onSortingChange?: OnChangeFn<SortingState>
+  /** Store table sorting, filters, visibility, and pagination in URL parameters. */
+  urlStateKey?: string
+  defaultSorting?: SortingState
+  defaultColumnVisibility?: VisibilityState
   enableRowSelection?: boolean
   rowSelection?: RowSelectionState
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
@@ -62,6 +67,9 @@ export function DataTable<T>({
   onColumnVisibilityChange,
   sorting: controlledSorting,
   onSortingChange,
+  urlStateKey,
+  defaultSorting = [],
+  defaultColumnVisibility = {},
   enableRowSelection = false,
   rowSelection: controlledSelection,
   onRowSelectionChange,
@@ -77,10 +85,23 @@ export function DataTable<T>({
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
   const [columnsOpen, setColumnsOpen] = useState(false)
   const [showColumnFilters, setShowColumnFilters] = useState(false)
+  const urlDefaults = useMemo(
+    () => ({
+      pageSize,
+      sorting: defaultSorting,
+      columnVisibility: defaultColumnVisibility,
+    }),
+    [defaultColumnVisibility, defaultSorting, pageSize],
+  )
+  const urlState = useTableUrlState(urlStateKey ?? '__local', urlDefaults)
+  const setUrlPagination = urlState.setPagination
+  const usesUrlState = urlStateKey !== undefined
 
   useEffect(() => {
-    setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
-  }, [pageSize, data])
+    if (!usesUrlState) {
+      setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
+    }
+  }, [pageSize, usesUrlState])
 
   useEffect(() => {
     if (!sizingStorageKey) return
@@ -91,12 +112,41 @@ export function DataTable<T>({
     }
   }, [columnSizing, sizingStorageKey])
 
-  const sorting = controlledSorting ?? internalSorting
-  const setSorting = onSortingChange ?? setInternalSorting
-  const visibility = columnVisibility ?? internalVisibility
-  const setVisibility = onColumnVisibilityChange ?? setInternalVisibility
+  const sorting = controlledSorting ?? (usesUrlState ? urlState.sorting : internalSorting)
+  const setSorting: OnChangeFn<SortingState> = onSortingChange ?? ((updater) => {
+    const next = typeof updater === 'function' ? updater(sorting) : updater
+    if (usesUrlState) urlState.setSorting(next)
+    else setInternalSorting(next)
+  })
+  const filters = usesUrlState ? urlState.columnFilters : columnFilters
+  const setFilters: OnChangeFn<ColumnFiltersState> = (updater) => {
+    const next = typeof updater === 'function' ? updater(filters) : updater
+    if (usesUrlState) urlState.setColumnFilters(next)
+    else setColumnFilters(next)
+  }
+  const visibility = columnVisibility
+    ?? (usesUrlState ? urlState.columnVisibility : internalVisibility)
+  const setVisibility: OnChangeFn<VisibilityState> = onColumnVisibilityChange ?? ((updater) => {
+    const next = typeof updater === 'function' ? updater(visibility) : updater
+    if (usesUrlState) urlState.setColumnVisibility(next)
+    else setInternalVisibility(next)
+  })
   const rowSelection = controlledSelection ?? internalSelection
   const setRowSelection = onRowSelectionChange ?? setInternalSelection
+  const activePagination = usesUrlState ? urlState.pagination : pagination
+  const setActivePagination = useCallback<OnChangeFn<PaginationState>>(
+    (updater) => {
+      const next = typeof updater === 'function' ? updater(activePagination) : updater
+      if (usesUrlState) setUrlPagination(next)
+      else setPagination(next)
+    },
+    [activePagination, setUrlPagination, usesUrlState],
+  )
+  const filtersVisible = usesUrlState ? urlState.showColumnFilters : showColumnFilters
+  const setFiltersVisible = (show: boolean) => {
+    if (usesUrlState) urlState.setShowColumnFilters(show)
+    else setShowColumnFilters(show)
+  }
 
   const table = useReactTable({
     data,
@@ -104,21 +154,22 @@ export function DataTable<T>({
     getRowId: (row) => getRowId(row),
     state: {
       sorting,
-      columnFilters,
+      columnFilters: filters,
       columnVisibility: visibility,
       rowSelection,
       columnSizing,
-      pagination,
+      pagination: activePagination,
     },
     enableRowSelection,
     enableColumnResizing: true,
     columnResizeMode: 'onChange',
+    autoResetPageIndex: !usesUrlState,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: setFilters,
     onColumnVisibilityChange: setVisibility,
     onRowSelectionChange: setRowSelection,
     onColumnSizingChange: setColumnSizing,
-    onPaginationChange: setPagination,
+    onPaginationChange: setActivePagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -141,7 +192,17 @@ export function DataTable<T>({
   const filteredCount = table.getFilteredRowModel().rows.length
   const pageCount = table.getPageCount()
   const pageIndex = table.getState().pagination.pageIndex
-  const activeColumnFilterCount = columnFilters.filter((f) => {
+
+  useEffect(() => {
+    const clampedPageIndex = clampPageIndex(pageIndex, pageCount)
+    if (clampedPageIndex === pageIndex) return
+    setActivePagination((previous) => ({
+      ...previous,
+      pageIndex: clampedPageIndex,
+    }))
+  }, [pageCount, pageIndex, setActivePagination])
+
+  const activeColumnFilterCount = filters.filter((f) => {
     if (typeof f.value === 'string') return f.value.trim().length > 0
     return f.value != null && f.value !== ''
   }).length
@@ -165,10 +226,10 @@ export function DataTable<T>({
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
-            className={`btn ${showColumnFilters || activeColumnFilterCount > 0 ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setShowColumnFilters((v) => !v)}
+            className={`btn ${filtersVisible || activeColumnFilterCount > 0 ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFiltersVisible(!filtersVisible)}
           >
-            {showColumnFilters ? 'Hide Filters' : 'Column Filters'}
+            {filtersVisible ? 'Hide Filters' : 'Column Filters'}
             {activeColumnFilterCount > 0 ? ` (${activeColumnFilterCount})` : ''}
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => setColumnsOpen((v) => !v)}>
@@ -179,7 +240,7 @@ export function DataTable<T>({
             className="btn btn-ghost"
             title="Reset column filters, sorting, and column widths only. List/field filters above are unchanged."
             onClick={() => {
-              setColumnFilters([])
+              setFilters([])
               setSorting([])
               if (sizingStorageKey) {
                 setColumnSizing({})
@@ -252,7 +313,7 @@ export function DataTable<T>({
                                 {flexRender(header.column.columnDef.header, header.getContext())}
                               </div>
                             )}
-                            {showColumnFilters && header.column.getCanFilter() && (
+                            {filtersVisible && header.column.getCanFilter() && (
                               <input
                                 className="field-input column-filter-input"
                                 value={(header.column.getFilterValue() as string) ?? ''}
@@ -301,7 +362,7 @@ export function DataTable<T>({
                 <span className="text-[var(--color-ink-muted)]">Rows</span>
                 <select
                   className="field-input w-auto py-0.5"
-                  value={pagination.pageSize}
+                  value={activePagination.pageSize}
                   onChange={(e) => table.setPageSize(Number(e.target.value))}
                 >
                   {[25, 50, 100, 200, 500].map((size) => (

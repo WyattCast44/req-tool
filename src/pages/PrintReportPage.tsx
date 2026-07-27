@@ -6,6 +6,7 @@ import { lookupLabel } from '../lib/defaults'
 import { RichTextView } from '../components/RichText'
 import { formatDateTime } from '../lib/ids'
 import { RECIPROCAL_RELATIONSHIP } from '../types/project'
+import { useRequirementViewState } from '../lib/urlState'
 
 function ClassificationBanner({ text, position }: { text: string; position: 'top' | 'bottom' }) {
   if (!text.trim()) return null
@@ -21,11 +22,8 @@ function ClassificationBanner({ text, position }: { text: string; position: 'top
 export function PrintReportPage() {
   const [params] = useSearchParams()
   const project = useProjectStore((s) => s.project)!
-  const searchQuery = useProjectStore((s) => s.searchQuery)
-  const filters = useProjectStore((s) => s.filters)
-  const tagLogic = useProjectStore((s) => s.tagLogic)
-  const sort = useProjectStore((s) => s.sort)
-  const selectedRequirementIds = useProjectStore((s) => s.selectedRequirementIds)
+  const { searchQuery, filters, tagLogic, sort, selectedRequirementIds } =
+    useRequirementViewState()
   const [printClassification, setPrintClassification] = useState(
     () => project.metadata.classificationBanner || '',
   )
@@ -35,10 +33,13 @@ export function PrintReportPage() {
     [project, searchQuery, filters, tagLogic, sort],
   )
 
+  const printAll = params.get('scope') === 'all'
   const idsParam = params.get('ids')
   const reportIds = idsParam ? idsParam.split(',').filter(Boolean) : selectedRequirementIds
   const reportReqs =
-    reportIds.length > 0
+    printAll
+      ? project.requirements
+      : reportIds.length > 0
       ? project.requirements.filter((r) => reportIds.includes(r.id))
       : filtered.slice(0, 25)
 
@@ -46,7 +47,10 @@ export function PrintReportPage() {
     <div className="min-h-full bg-[var(--color-shell)]">
       <div className="no-print border-b border-[var(--color-line)] bg-white px-4 py-2">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
-          <Link to="/reports" className="text-sm text-[var(--color-accent)] hover:underline">
+          <Link
+            to={`/reports${params.toString() ? `?${params.toString()}` : ''}`}
+            className="text-sm text-[var(--color-accent)] hover:underline"
+          >
             ← Reports & Exports
           </Link>
           <label className="flex min-w-0 flex-1 items-center gap-2 md:max-w-md">

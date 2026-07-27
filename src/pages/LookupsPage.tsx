@@ -310,6 +310,7 @@ export function LookupsPage() {
               columns={categoryColumns}
               getRowId={(row) => row.id}
               pageSize={25}
+              urlStateKey="tagCategories"
               maxHeightClassName="max-h-[40vh]"
               sizingStorageKey="lookup-tag-categories"
               emptyMessage="No categories match the current column filters."
@@ -354,6 +355,7 @@ export function LookupsPage() {
               columns={tagColumns}
               getRowId={(row) => row.id}
               pageSize={50}
+              urlStateKey="tags"
               maxHeightClassName="max-h-[50vh]"
               sizingStorageKey="lookup-tags"
               emptyMessage="No tags match the current column filters."
@@ -535,6 +537,7 @@ function LookupSectionTable({
           columns={columns}
           getRowId={(row) => row.id}
           pageSize={25}
+          urlStateKey={sectionKey}
           maxHeightClassName="max-h-[40vh]"
           sizingStorageKey={`lookups-${sectionKey}`}
           emptyMessage="No values match the current column filters."

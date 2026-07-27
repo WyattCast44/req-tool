@@ -16,11 +16,12 @@
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
+    "docx": "^9.7.1",
     "dompurify": "^3.4.12",
     "idb": "^8.0.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.1",
+    "react-router-dom": "^7.11.0",
     "uuid": "^14.0.1",
     "zustand": "^5.0.14"
   },

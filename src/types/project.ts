@@ -323,16 +323,19 @@ export const DEFAULT_COLUMNS = [
   'modifiedAt',
 ] as const
 
-export type ColumnId =
-  | 'sourceId'
-  | 'shortTitle'
-  | 'status'
-  | 'classification'
-  | 'type'
-  | 'priority'
-  | 'assessment'
-  | 'verification'
-  | 'tags'
-  | 'sources'
-  | 'modifiedAt'
-  | 'editorName'
+export const REQUIREMENT_COLUMNS = [
+  'sourceId',
+  'shortTitle',
+  'status',
+  'classification',
+  'type',
+  'priority',
+  'assessment',
+  'verification',
+  'tags',
+  'sources',
+  'modifiedAt',
+  'editorName',
+] as const
+
+export type ColumnId = (typeof REQUIREMENT_COLUMNS)[number]

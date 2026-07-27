@@ -25,9 +25,6 @@ const MAX_HITS = 12
 export function GlobalSearch() {
   const navigate = useNavigate()
   const project = useProjectStore((s) => s.project)
-  const setSearchQuery = useProjectStore((s) => s.setSearchQuery)
-  const resetFilters = useProjectStore((s) => s.resetFilters)
-  const setGraphFocus = useProjectStore((s) => s.setGraphFocus)
 
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -108,7 +105,6 @@ export function GlobalSearch() {
     setOpen(false)
     setQuery('')
     if (hit.kind === 'requirement') {
-      setGraphFocus(hit.id)
       navigate(`/requirements/${hit.id}`)
     } else {
       navigate('/activities')
@@ -117,10 +113,8 @@ export function GlobalSearch() {
 
   const runFullSearch = () => {
     const q = query.trim()
-    resetFilters()
-    setSearchQuery(q)
     setOpen(false)
-    navigate('/requirements')
+    navigate(`/requirements${q ? `?q=${encodeURIComponent(q)}` : ''}`)
   }
 
   return (

@@ -8,6 +8,7 @@ import { DataTable } from '../components/DataTable'
 import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { formatDateTime } from '../lib/ids'
 import type { SavedView } from '../types/project'
+import { savedViewSearch } from '../lib/urlState'
 
 interface ViewRow {
   id: string
@@ -23,7 +24,6 @@ export function SavedViewsPage() {
   const navigate = useNavigate()
   const project = useProjectStore((s) => s.project)!
   const mode = useProjectStore((s) => s.mode)
-  const applySavedView = useProjectStore((s) => s.applySavedView)
   const upsertSavedView = useProjectStore((s) => s.upsertSavedView)
   const deleteSavedView = useProjectStore((s) => s.deleteSavedView)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -80,8 +80,7 @@ export function SavedViewsPage() {
               type="button"
               className="btn btn-secondary px-1.5 py-0.5 text-[0.68rem]"
               onClick={() => {
-                applySavedView(row.original.id)
-                navigate('/requirements')
+                navigate(`/requirements${savedViewSearch(row.original.view)}`)
               }}
             >
               Apply
@@ -117,7 +116,7 @@ export function SavedViewsPage() {
       },
     ]
     return defs
-  }, [applySavedView, mode, navigate, upsertSavedView])
+  }, [mode, navigate, upsertSavedView])
 
   return (
     <div className="space-y-2.5">
@@ -128,19 +127,6 @@ export function SavedViewsPage() {
             Named filter configurations stored in the project save file and shared with all users of that file.
           </p>
         </div>
-        {mode === 'edit' && (
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => {
-              const name = window.prompt('Name for saved view from current filters')
-              if (!name?.trim()) return
-              upsertSavedView({ name: name.trim() })
-            }}
-          >
-            Save Current Filters as View
-          </button>
-        )}
       </div>
 
       {project.savedViews.length === 0 ? (
@@ -151,6 +137,7 @@ export function SavedViewsPage() {
           columns={columns}
           getRowId={(row) => row.id}
           pageSize={50}
+          urlStateKey=""
           sizingStorageKey="saved-views"
           emptyMessage="No saved views match the current column filters."
         />

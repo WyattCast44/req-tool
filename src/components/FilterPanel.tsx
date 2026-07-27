@@ -3,6 +3,7 @@ import { FuzzyMultiSelect } from './FuzzyMultiSelect'
 import { useProjectStore } from '../store/projectStore'
 import type { ProjectData, RequirementFilters, TagLogic } from '../types/project'
 import { lookupLabel } from '../lib/defaults'
+import { useRequirementViewState } from '../lib/urlState'
 
 function MultiSelect({
   label,
@@ -156,17 +157,19 @@ function buildActiveChips(
 
 export function FilterPanel() {
   const project = useProjectStore((s) => s.project)!
-  const searchQuery = useProjectStore((s) => s.searchQuery)
-  const filters = useProjectStore((s) => s.filters)
-  const tagLogic = useProjectStore((s) => s.tagLogic)
-  const setSearchQuery = useProjectStore((s) => s.setSearchQuery)
-  const setFilters = useProjectStore((s) => s.setFilters)
-  const setTagLogic = useProjectStore((s) => s.setTagLogic)
-  const resetFilters = useProjectStore((s) => s.resetFilters)
+  const {
+    searchQuery,
+    filters,
+    tagLogic,
+    setSearchQuery,
+    setFilters,
+    setTagLogic,
+    resetFilters,
+    activeSavedViewId,
+    applySavedView,
+    clearSavedView,
+  } = useRequirementViewState()
   const savedViews = project.savedViews
-  const activeSavedViewId = useProjectStore((s) => s.activeSavedViewId)
-  const applySavedView = useProjectStore((s) => s.applySavedView)
-  const clearSavedView = useProjectStore((s) => s.clearSavedView)
 
   const owners = Array.from(
     new Set(project.testActivities.map((t) => t.owner).filter(Boolean)),
@@ -204,7 +207,10 @@ export function FilterPanel() {
             value={activeSavedViewId || ''}
             onChange={(e) => {
               if (!e.target.value) clearSavedView()
-              else applySavedView(e.target.value)
+              else {
+                const view = savedViews.find((item) => item.id === e.target.value)
+                if (view) applySavedView(view)
+              }
             }}
           >
             <option value="">None</option>

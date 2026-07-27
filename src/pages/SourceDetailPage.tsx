@@ -390,6 +390,7 @@ export function SourceDetailPage() {
               columns={associatedColumns}
               getRowId={(row) => row.id}
               pageSize={25}
+              urlStateKey=""
               maxHeightClassName="max-h-[50vh]"
               sizingStorageKey="source-associated-requirements"
               emptyMessage="No linked requirements match the current column filters."

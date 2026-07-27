@@ -1,40 +1,24 @@
-import { useEffect, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
 import { filterRequirements } from '../lib/filters'
 import { downloadTextFile, matrixToCsv, requirementsToCsv } from '../lib/export'
+import { useMatrixUrlState, useRequirementViewState } from '../lib/urlState'
+import { downloadRequirementsDocx } from '../lib/requirementsDocxExport'
 
 export function ReportsPage() {
   const navigate = useNavigate()
-  const [params] = useSearchParams()
   const project = useProjectStore((s) => s.project)!
-  const searchQuery = useProjectStore((s) => s.searchQuery)
-  const filters = useProjectStore((s) => s.filters)
-  const tagLogic = useProjectStore((s) => s.tagLogic)
-  const sort = useProjectStore((s) => s.sort)
-  const selectedRequirementIds = useProjectStore((s) => s.selectedRequirementIds)
-  const setSelectedRequirementIds = useProjectStore((s) => s.setSelectedRequirementIds)
+  const { searchQuery, filters, tagLogic, sort } = useRequirementViewState()
   const exportProject = useProjectStore((s) => s.exportProject)
-  const matrixTypes = useProjectStore((s) => s.matrixTypes)
-
-  const idsParam = params.get('ids')
-  useEffect(() => {
-    if (!idsParam) return
-    const ids = idsParam.split(',').filter(Boolean)
-    if (ids.length) setSelectedRequirementIds(ids)
-  }, [idsParam, setSelectedRequirementIds])
+  const setToast = useProjectStore((s) => s.setToast)
+  const { types: matrixTypes } = useMatrixUrlState()
+  const [wordExportStatus, setWordExportStatus] = useState('')
 
   const filtered = useMemo(
     () => filterRequirements(project, searchQuery, filters, tagLogic, sort),
     [project, searchQuery, filters, tagLogic, sort],
   )
-
-  const reportIds = idsParam
-    ? idsParam.split(',').filter(Boolean)
-    : selectedRequirementIds
-  const selected = project.requirements.filter((r) => reportIds.includes(r.id))
-  const reportCount =
-    reportIds.length > 0 ? reportIds.length : Math.min(filtered.length, 25)
 
   const matrixRels = project.relationships.filter((r) => {
     if (!matrixTypes.includes(r.type)) return false
@@ -71,31 +55,28 @@ export function ReportsPage() {
           }
         />
         <ExportCard
-          title="CSV — filtered requirements"
-          body={`Export the current filtered set (${filtered.length}).`}
-          actionLabel="Export Filtered CSV"
-          onClick={() =>
-            downloadTextFile(
-              `${project.metadata.name.replace(/\s+/g, '_')}_requirements_filtered.csv`,
-              requirementsToCsv(project, filtered),
-              'text/csv',
-            )
-          }
-        />
-        <ExportCard
-          title="CSV — selected requirements"
-          body={`Export ${selected.length} selected row(s) from the requirements table.`}
-          actionLabel="Export Selected CSV"
+          title="Word — all requirements"
+          body={`Generate a Word document containing all ${project.requirements.length} requirements in the background.`}
+          actionLabel={wordExportStatus || 'Export All Word'}
+          disabled={Boolean(wordExportStatus)}
           onClick={() => {
-            if (!selected.length) {
-              window.alert('Select one or more requirements in the Requirements table first.')
-              return
-            }
-            downloadTextFile(
-              `${project.metadata.name.replace(/\s+/g, '_')}_requirements_selected.csv`,
-              requirementsToCsv(project, selected),
-              'text/csv',
+            if (wordExportStatus) return
+            setWordExportStatus('Starting Word export…')
+            void downloadRequirementsDocx(
+              project,
+              project.requirements.map((requirement) => requirement.id),
+              'all',
+              setWordExportStatus,
             )
+              .then(() => setToast('All requirements exported to Word.'))
+              .catch((error: unknown) => {
+                setToast(
+                  error instanceof Error
+                    ? error.message
+                    : 'Could not generate the Word document.',
+                )
+              })
+              .finally(() => setWordExportStatus(''))
           }}
         />
         <ExportCard
@@ -111,14 +92,10 @@ export function ReportsPage() {
           }
         />
         <ExportCard
-          title="Printable requirement report"
-          body={`Open a clean print preview for ${reportCount} requirement(s), then use Print / Save as PDF.`}
+          title="Print all requirements"
+          body={`Open a clean print preview for all ${project.requirements.length} requirements, then use Print / Save as PDF.`}
           actionLabel="Open Print Preview"
-          onClick={() => {
-            const qs =
-              reportIds.length > 0 ? `?ids=${encodeURIComponent(reportIds.join(','))}` : ''
-            navigate(`/print${qs}`)
-          }}
+          onClick={() => navigate('/print?scope=all')}
         />
       </section>
     </div>
@@ -130,17 +107,24 @@ function ExportCard({
   body,
   actionLabel,
   onClick,
+  disabled = false,
 }: {
   title: string
   body: string
   actionLabel: string
   onClick: () => void
+  disabled?: boolean
 }) {
   return (
     <div className="rounded-md border border-[var(--color-line)] p-4">
       <h3 className="font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-[var(--color-ink-muted)]">{body}</p>
-      <button type="button" className="btn btn-secondary mt-3" onClick={onClick}>
+      <button
+        type="button"
+        className="btn btn-secondary mt-3"
+        disabled={disabled}
+        onClick={onClick}
+      >
         {actionLabel}
       </button>
     </div>

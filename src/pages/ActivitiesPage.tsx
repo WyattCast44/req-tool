@@ -213,6 +213,7 @@ export function ActivitiesPage() {
           columns={columns}
           getRowId={(row) => row.id}
           pageSize={50}
+          urlStateKey=""
           sizingStorageKey="activities"
           emptyMessage="No activities match the current column filters."
         />

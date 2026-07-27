@@ -139,6 +139,7 @@ export function SourcesPage() {
           columns={columns}
           getRowId={(row) => row.id}
           pageSize={50}
+          urlStateKey=""
           sizingStorageKey="sources"
           emptyMessage="No sources match the current column filters."
         />

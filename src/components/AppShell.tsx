@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
 import { formatDateTime } from '../lib/ids'
 import { GlobalSearch } from './GlobalSearch'
@@ -21,6 +21,7 @@ const NAV = [
 
 export function AppShell() {
   const navigate = useNavigate()
+  const location = useLocation()
   const project = useProjectStore((s) => s.project)
   const mode = useProjectStore((s) => s.mode)
   const hasUnexportedChanges = useProjectStore((s) => s.hasUnexportedChanges)
@@ -58,6 +59,11 @@ export function AppShell() {
 
   const label = stateLabel()
   const editing = mode === 'edit'
+  const scopedViewRoutes = new Set(['/requirements', '/matrix', '/reports'])
+  const navTarget = (to: string) =>
+    scopedViewRoutes.has(location.pathname) && scopedViewRoutes.has(to)
+      ? `${to}${location.search}`
+      : to
 
   const closeProject = () => {
     void discardLocalAndClear().then(() => navigate('/welcome'))
@@ -178,7 +184,7 @@ export function AppShell() {
               {NAV.map((item) => (
                 <li key={item.to}>
                   <NavLink
-                    to={item.to}
+                    to={navTarget(item.to)}
                     end={item.end}
                     className={({ isActive }) =>
                       `block rounded-[2px] px-2 py-1 text-[0.78rem] font-medium ${
@@ -204,7 +210,7 @@ export function AppShell() {
             {NAV.map((item) => (
               <NavLink
                 key={item.to}
-                to={item.to}
+                to={navTarget(item.to)}
                 end={item.end}
                 className={({ isActive }) =>
                   `whitespace-nowrap rounded-[2px] px-2 py-1 text-[0.68rem] font-semibold ${

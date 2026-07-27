@@ -4,7 +4,6 @@ import {
   SCHEMA_VERSION,
   emptyFilters,
   type AssessmentRecord,
-  type ColumnId,
   type EvidenceReference,
   type LookupValue,
   type Lookups,
@@ -13,16 +12,13 @@ import {
   type ProjectStateLabel,
   type Requirement,
   type RequirementActivityLink,
-  type RequirementFilters,
   type RequirementRelationship,
   type RequirementSourceLink,
   type SavedView,
   type Source,
   type SourceRelationshipType,
-  type SortSpec,
   type Tag,
   type TagCategory,
-  type TagLogic,
   type TestActivity,
   type VerificationRecord,
 } from '../types/project'
@@ -37,28 +33,8 @@ import {
 } from '../lib/validate'
 import { newId, nowIso } from '../lib/ids'
 import { ensureLinkSafety } from '../lib/sanitize'
-import type { RelationshipType } from '../types/project'
 
-interface UiState {
-  searchQuery: string
-  filters: RequirementFilters
-  tagLogic: TagLogic
-  sort: SortSpec[]
-  visibleColumns: ColumnId[]
-  selectedRequirementIds: string[]
-  page: number
-  pageSize: number
-  activeSavedViewId: string | null
-  graphFocusId: string | null
-  graphFocusKind: 'requirement' | 'source'
-  graphDepth: number
-  graphTypes: RelationshipType[]
-  matrixTypes: RelationshipType[]
-  toast: string | null
-  loadIssues: string[]
-}
-
-interface ProjectStore extends UiState {
+interface ProjectStore {
   project: ProjectData | null
   mode: ProjectMode
   hasUnexportedChanges: boolean
@@ -67,6 +43,8 @@ interface ProjectStore extends UiState {
   recoveryAvailable: boolean
   hydrated: boolean
   lastExportNotice: boolean
+  toast: string | null
+  loadIssues: string[]
 
   stateLabel: () => ProjectStateLabel
   hydrate: () => Promise<void>
@@ -80,18 +58,6 @@ interface ProjectStore extends UiState {
   enterEditMode: () => void
   exitEditMode: () => void
   setEditorNameDefault: (name: string) => void
-
-  setSearchQuery: (q: string) => void
-  setFilters: (filters: Partial<RequirementFilters>) => void
-  resetFilters: () => void
-  setTagLogic: (logic: TagLogic) => void
-  setSort: (sort: SortSpec[]) => void
-  setVisibleColumns: (cols: ColumnId[]) => void
-  setSelectedRequirementIds: (ids: string[]) => void
-  setPage: (page: number) => void
-  applyGapFilter: (gapKey: string) => void
-  applySavedView: (viewId: string) => void
-  clearSavedView: () => void
 
   updateProjectMeta: (patch: Partial<ProjectData['metadata']>) => void
 
@@ -145,11 +111,6 @@ interface ProjectStore extends UiState {
   upsertSavedView: (input: Partial<SavedView> & { name: string; id?: string }) => string
   deleteSavedView: (id: string) => void
 
-  setGraphFocus: (id: string | null) => void
-  setGraphSourceFocus: (id: string | null) => void
-  setGraphDepth: (depth: number) => void
-  setGraphTypes: (types: RelationshipType[]) => void
-  setMatrixTypes: (types: RelationshipType[]) => void
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -226,36 +187,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   hydrated: false,
   lastExportNotice: false,
 
-  searchQuery: '',
-  filters: emptyFilters(),
-  tagLogic: 'any',
-  sort: [{ field: 'sourceId', direction: 'asc' }],
-  visibleColumns: [...DEFAULT_COLUMNS],
-  selectedRequirementIds: [],
-  page: 1,
-  pageSize: 100,
-  activeSavedViewId: null,
-  graphFocusId: null,
-  graphFocusKind: 'requirement',
-  graphDepth: 1,
-  graphTypes: [
-    'Parent of',
-    'Child of',
-    'Derived from',
-    'Supports',
-    'Depends on',
-    'Conflicts with',
-    'Duplicates',
-  ],
-  matrixTypes: [
-    'Parent of',
-    'Child of',
-    'Derived from',
-    'Supports',
-    'Depends on',
-    'Conflicts with',
-    'Duplicates',
-  ],
   toast: null,
   loadIssues: [],
 
@@ -315,12 +246,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       recoveryAvailable: false,
       lastExportNotice: false,
       loadIssues: [],
-      searchQuery: '',
-      filters: emptyFilters(),
-      page: 1,
-      selectedRequirementIds: [],
-      graphFocusId: project.requirements[0]?.id ?? null,
-      graphFocusKind: 'requirement',
     })
     await persist(get)
   },
@@ -344,12 +269,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         recoveryAvailable: false,
         lastExportNotice: false,
         loadIssues: result.issues.map((i) => i.message),
-        searchQuery: '',
-        filters: emptyFilters(),
-        page: 1,
-        selectedRequirementIds: [],
-        graphFocusId: result.project.requirements[0]?.id ?? null,
-        graphFocusKind: 'requirement',
       })
       // Defer IndexedDB write so the dashboard can paint first on large projects.
       setTimeout(() => {
@@ -383,9 +302,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       recoveryAvailable: false,
       lastExportNotice: false,
       loadIssues: [],
-      filters: emptyFilters(),
-      searchQuery: '',
-      selectedRequirementIds: [],
     })
   },
 
@@ -429,36 +345,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     })
     schedulePersist(get, set)
   },
-
-  setSearchQuery: (q) => set({ searchQuery: q, page: 1 }),
-  setFilters: (filters) =>
-    set((s) => ({ filters: { ...s.filters, ...filters }, page: 1, activeSavedViewId: null })),
-  resetFilters: () => set({ filters: emptyFilters(), searchQuery: '', tagLogic: 'any', page: 1, activeSavedViewId: null }),
-  setTagLogic: (logic) => set({ tagLogic: logic, page: 1, activeSavedViewId: null }),
-  setSort: (sort) => set({ sort, page: 1 }),
-  setVisibleColumns: (cols) => set({ visibleColumns: cols }),
-  setSelectedRequirementIds: (ids) => set({ selectedRequirementIds: ids }),
-  setPage: (page) => set({ page }),
-  applyGapFilter: (gapKey) =>
-    set({
-      filters: { ...emptyFilters(), gapKey },
-      page: 1,
-      activeSavedViewId: null,
-    }),
-  applySavedView: (viewId) => {
-    const view = get().project?.savedViews.find((v) => v.id === viewId)
-    if (!view) return
-    set({
-      activeSavedViewId: viewId,
-      searchQuery: view.searchQuery,
-      filters: { ...emptyFilters(), ...view.filters },
-      tagLogic: view.tagLogic,
-      sort: view.sort.length ? view.sort : [{ field: 'sourceId', direction: 'asc' }],
-      visibleColumns: (view.visibleColumns as ColumnId[]) || [...DEFAULT_COLUMNS],
-      page: 1,
-    })
-  },
-  clearSavedView: () => set({ activeSavedViewId: null }),
 
   updateProjectMeta: (patch) => {
     const project = get().project
@@ -583,7 +469,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({
       project: touchProject(cleaned),
       hasUnexportedChanges: true,
-      selectedRequirementIds: get().selectedRequirementIds.filter((x) => x !== id),
       lastExportNotice: false,
     })
     schedulePersist(get, set)
@@ -1336,7 +1221,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const project = get().project
     if (!project || get().mode !== 'edit') return ''
     const ts = nowIso()
-    const state = get()
     if (input.id) {
       set({
         project: touchProject({
@@ -1362,11 +1246,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const created: SavedView = {
       id: newId(),
       name: input.name.trim(),
-      searchQuery: input.searchQuery ?? state.searchQuery,
-      filters: input.filters ?? state.filters,
-      tagLogic: input.tagLogic ?? state.tagLogic,
-      sort: input.sort ?? state.sort,
-      visibleColumns: input.visibleColumns ?? state.visibleColumns,
+      searchQuery: input.searchQuery ?? '',
+      filters: input.filters ?? emptyFilters(),
+      tagLogic: input.tagLogic ?? 'any',
+      sort: input.sort ?? [{ field: 'sourceId', direction: 'asc' }],
+      visibleColumns: input.visibleColumns ?? [...DEFAULT_COLUMNS],
       createdAt: ts,
       modifiedAt: ts,
     }
@@ -1374,7 +1258,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       project: touchProject({ ...project, savedViews: [...project.savedViews, created] }),
       hasUnexportedChanges: true,
       lastExportNotice: false,
-      activeSavedViewId: created.id,
     })
     schedulePersist(get, set)
     return created.id
@@ -1388,18 +1271,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         ...project,
         savedViews: project.savedViews.filter((v) => v.id !== id),
       }),
-      activeSavedViewId: get().activeSavedViewId === id ? null : get().activeSavedViewId,
       hasUnexportedChanges: true,
       lastExportNotice: false,
     })
     schedulePersist(get, set)
   },
-
-  setGraphFocus: (id) => set({ graphFocusId: id, graphFocusKind: 'requirement' }),
-  setGraphSourceFocus: (id) => set({ graphFocusId: id, graphFocusKind: 'source' }),
-  setGraphDepth: (depth) => set({ graphDepth: depth }),
-  setGraphTypes: (types) => set({ graphTypes: types }),
-  setMatrixTypes: (types) => set({ matrixTypes: types }),
 }))
 
 function countLookupUsage(project: ProjectData, key: keyof Lookups, id: string): number {

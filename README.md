@@ -80,5 +80,5 @@ npm run preview
 - Traceability matrix and focused relationship graph
 - Test activity records
 - Lookup/tag management
-- CSV exports, printable requirement reports, `.otreq` import/export
+- CSV and Word exports, printable requirement reports, `.otreq` import/export
 - Deletion confirmations with impact summary

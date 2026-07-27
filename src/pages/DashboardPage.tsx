@@ -4,23 +4,15 @@ import { useProjectStore } from '../store/projectStore'
 import { buildDashboardStats } from '../lib/filters'
 import { formatDateTime } from '../lib/ids'
 import { EmptyState } from '../components/EmptyState'
+import { requirementFilterSearch } from '../lib/urlState'
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const project = useProjectStore((s) => s.project)
-  const applyGapFilter = useProjectStore((s) => s.applyGapFilter)
-  const setFilters = useProjectStore((s) => s.setFilters)
-  const resetFilters = useProjectStore((s) => s.resetFilters)
 
   const stats = useMemo(() => (project ? buildDashboardStats(project) : null), [project])
 
   if (!project || !stats) return null
-
-  const goFiltered = (configure: () => void) => {
-    resetFilters()
-    configure()
-    navigate('/requirements')
-  }
 
   return (
     <div className="space-y-2.5">
@@ -54,7 +46,9 @@ export function DashboardPage() {
                   key={item.id}
                   type="button"
                   className="stat-tile"
-                  onClick={() => goFiltered(() => setFilters({ statusIds: [item.id] }))}
+                  onClick={() =>
+                    navigate(`/requirements${requirementFilterSearch({ statusIds: [item.id] })}`)
+                  }
                 >
                   <div className="stat-value">{item.count}</div>
                   <div className="stat-label">{item.label}</div>
@@ -124,8 +118,7 @@ export function DashboardPage() {
                             type="button"
                             className="text-left text-[var(--color-accent)] hover:underline"
                             onClick={() => {
-                              applyGapFilter(gap.key)
-                              navigate('/requirements')
+                              navigate(`/requirements${requirementFilterSearch({ gapKey: gap.key })}`)
                             }}
                           >
                             {gap.label}

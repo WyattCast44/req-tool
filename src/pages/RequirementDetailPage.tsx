@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useProjectStore } from '../store/projectStore'
 import { RichTextEditor, RichTextView } from '../components/RichText'
@@ -9,7 +9,7 @@ import { ConfirmDialog, Modal } from '../components/Modal'
 import { DataTable } from '../components/DataTable'
 import { FuzzySelect } from '../components/FuzzySelect'
 import { lookupLabel } from '../lib/defaults'
-import { formatDateTime } from '../lib/ids'
+import { formatDateTime, slugifyFilename } from '../lib/ids'
 import { fuzzyIncludesFilter, plainTextFromHtml } from '../lib/tableFilters'
 import {
   RECIPROCAL_RELATIONSHIP,
@@ -21,6 +21,8 @@ import {
   type TagCategory,
 } from '../types/project'
 import { currentAssessment } from '../lib/filters'
+import { downloadTextFile, requirementsToCsv } from '../lib/export'
+import { downloadRequirementDocx } from '../lib/requirementsDocxExport'
 import {
   RequirementSourceLinkModal,
   type RequirementSourceLinkDraft,
@@ -91,8 +93,28 @@ export function RequirementDetailPage() {
   const deleteVerification = useProjectStore((s) => s.deleteVerification)
   const upsertAssessment = useProjectStore((s) => s.upsertAssessment)
   const deleteAssessment = useProjectStore((s) => s.deleteAssessment)
-  const setGraphFocus = useProjectStore((s) => s.setGraphFocus)
   const setToast = useProjectStore((s) => s.setToast)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requirementDetailSuffix = searchParams.toString() ? `?${searchParams.toString()}` : ''
+  const requirementListParams = useMemo(() => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('tab')
+    return next
+  }, [searchParams])
+  const requirementListHref = `/requirements${
+    requirementListParams.toString() ? `?${requirementListParams.toString()}` : ''
+  }`
+  const tabParam = searchParams.get('tab')
+  const activeTab: RequirementTab =
+    tabParam === 'traceability' || tabParam === 'verification' ? tabParam : 'overview'
+  const setActiveTab = (tab: RequirementTab) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      if (tab === 'overview') next.delete('tab')
+      else next.set('tab', tab)
+      return next
+    }, { replace: true })
+  }
 
   const existing = useMemo(
     () => (isNew ? null : project.requirements.find((r) => r.id === id) || null),
@@ -115,7 +137,7 @@ export function RequirementDetailPage() {
   const [relOpen, setRelOpen] = useState(false)
   const [sourceLinkOpen, setSourceLinkOpen] = useState(false)
   const [editingSourceLink, setEditingSourceLink] = useState<RequirementSourceLink | null>(null)
-  const [activeTab, setActiveTab] = useState<RequirementTab>('overview')
+  const [wordExportStatus, setWordExportStatus] = useState('')
   const [relDraft, setRelDraft] = useState({
     targetRequirementId: '',
     type: 'Supports' as RelationshipType,
@@ -132,10 +154,6 @@ export function RequirementDetailPage() {
       setForm(emptyReq({ statusId: defaultStatus, classificationId: defaultClass }))
     }
   }, [existing, isNew, defaultStatus, defaultClass, project.metadata.editorNameDefault])
-
-  useEffect(() => {
-    setActiveTab('overview')
-  }, [id])
 
   const reqId = existing?.id
   const relationships = useMemo(
@@ -193,7 +211,10 @@ export function RequirementDetailPage() {
         accessorKey: 'relatedSourceId',
         header: 'Related ID',
         cell: ({ row }) => (
-          <Link className="text-[var(--color-accent)] hover:underline" to={`/requirements/${row.original.otherId}`}>
+          <Link
+            className="text-[var(--color-accent)] hover:underline"
+            to={`/requirements/${row.original.otherId}${requirementDetailSuffix}`}
+          >
             {row.original.relatedSourceId}
           </Link>
         ),
@@ -256,7 +277,7 @@ export function RequirementDetailPage() {
     }
 
     return defs
-  }, [deleteRelationship, editing])
+  }, [deleteRelationship, editing, requirementDetailSuffix])
 
   const sourceLinkRows = useMemo<SourceLinkRow[]>(
     () =>
@@ -365,7 +386,7 @@ export function RequirementDetailPage() {
     return (
       <div className="panel p-6">
         <p>Requirement not found.</p>
-        <Link className="btn btn-secondary mt-3" to="/requirements">
+        <Link className="btn btn-secondary mt-3" to={requirementListHref}>
           Back to list
         </Link>
       </div>
@@ -391,7 +412,7 @@ export function RequirementDetailPage() {
     setErrors(result.errors)
     if (result.ok && result.id) {
       setToast(isNew ? 'Requirement created (local autosave).' : 'Requirement updated (local autosave).')
-      navigate(`/requirements/${result.id}`, { replace: true })
+      navigate(`/requirements/${result.id}${requirementDetailSuffix}`, { replace: true })
     }
   }
 
@@ -402,7 +423,7 @@ export function RequirementDetailPage() {
     <div className="requirement-page">
       <header className="panel requirement-hero">
         <div className="min-w-0">
-          <Link to="/requirements" className="requirement-breadcrumb">
+          <Link to={requirementListHref} className="requirement-breadcrumb">
             ← All requirements
           </Link>
           <div className="mt-2 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--color-ink-muted)]">
@@ -431,9 +452,46 @@ export function RequirementDetailPage() {
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => {
-                  setGraphFocus(reqId)
-                  navigate('/graph')
+                  if (!existing) return
+                  downloadTextFile(
+                    `${slugifyFilename(project.metadata.name)}_${slugifyFilename(existing.sourceId)}.csv`,
+                    requirementsToCsv(project, [existing]),
+                    'text/csv',
+                  )
                 }}
+              >
+                Export CSV
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={Boolean(wordExportStatus)}
+                onClick={() => {
+                  if (!existing || wordExportStatus) return
+                  setWordExportStatus('Starting Word export…')
+                  void downloadRequirementDocx(
+                    project,
+                    existing.id,
+                    existing.sourceId,
+                    setWordExportStatus,
+                  )
+                    .then(() => setToast(`${existing.sourceId} exported to Word.`))
+                    .catch((error: unknown) => {
+                      setToast(
+                        error instanceof Error
+                          ? error.message
+                          : 'Could not generate the Word document.',
+                      )
+                    })
+                    .finally(() => setWordExportStatus(''))
+                }}
+              >
+                {wordExportStatus || 'Export Word'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => navigate(`/graph?focus=${encodeURIComponent(reqId)}`)}
               >
                 Open in Graph
               </button>
@@ -733,6 +791,7 @@ export function RequirementDetailPage() {
                 columns={relationshipColumns}
                 getRowId={(row) => row.id}
                 pageSize={25}
+                urlStateKey="relationships"
                 maxHeightClassName="max-h-[50vh]"
                 sizingStorageKey="requirement-relationships"
                 emptyMessage="No relationships match the current column filters."
@@ -773,6 +832,7 @@ export function RequirementDetailPage() {
                 columns={sourceLinkColumns}
                 getRowId={(row) => row.id}
                 pageSize={25}
+                urlStateKey="sources"
                 maxHeightClassName="max-h-[50vh]"
                 sizingStorageKey="requirement-sources"
                 emptyMessage="No linked sources match the current column filters."
@@ -1285,8 +1345,15 @@ export function RequirementDetailPage() {
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => {
           if (!reqId) return
+          const next = new URLSearchParams(requirementListParams)
+          const remainingSelectedIds = next
+            .getAll('selected')
+            .filter((selectedId) => selectedId !== reqId)
+          next.delete('selected')
+          remainingSelectedIds.forEach((selectedId) => next.append('selected', selectedId))
           deleteRequirement(reqId)
-          navigate('/requirements')
+          const search = next.toString()
+          navigate(`/requirements${search ? `?${search}` : ''}`)
         }}
         message={
           <div>

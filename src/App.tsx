@@ -40,7 +40,8 @@ export default function App() {
   }, [hydrate])
 
   return (
-    <HashRouter>
+    // URL parameters directly control inputs, so location updates must render synchronously.
+    <HashRouter unstable_useTransitions={false}>
       <Routes>
         <Route path="/welcome" element={<WelcomePage />} />
         <Route

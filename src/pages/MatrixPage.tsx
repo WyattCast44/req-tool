@@ -1,22 +1,23 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
 import { filterRequirements } from '../lib/filters'
 import { RELATIONSHIP_TYPES, type RelationshipType } from '../types/project'
 import { downloadTextFile, matrixToCsv } from '../lib/export'
 import { FilterPanel } from '../components/FilterPanel'
+import { useMatrixUrlState, useRequirementViewState } from '../lib/urlState'
 
 export function MatrixPage() {
   const project = useProjectStore((s) => s.project)!
-  const searchQuery = useProjectStore((s) => s.searchQuery)
-  const filters = useProjectStore((s) => s.filters)
-  const tagLogic = useProjectStore((s) => s.tagLogic)
-  const sort = useProjectStore((s) => s.sort)
-  const matrixTypes = useProjectStore((s) => s.matrixTypes)
-  const setMatrixTypes = useProjectStore((s) => s.setMatrixTypes)
-
-  const [rowPage, setRowPage] = useState(1)
-  const [colPage, setColPage] = useState(1)
+  const { searchQuery, filters, tagLogic, sort } = useRequirementViewState()
+  const {
+    types: matrixTypes,
+    rowPage: requestedRowPage,
+    colPage: requestedColPage,
+    setTypes: setMatrixTypes,
+    setRowPage,
+    setColPage,
+  } = useMatrixUrlState()
   const pageSize = 25
 
   const filtered = useMemo(
@@ -26,6 +27,8 @@ export function MatrixPage() {
 
   const rowCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const colCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const rowPage = Math.min(requestedRowPage, rowCount)
+  const colPage = Math.min(requestedColPage, colCount)
   const rows = filtered.slice((rowPage - 1) * pageSize, rowPage * pageSize)
   const cols = filtered.slice((colPage - 1) * pageSize, colPage * pageSize)
 
@@ -96,21 +99,21 @@ export function MatrixPage() {
       <div className="flex flex-wrap gap-3 text-sm">
         <div>
           Rows page{' '}
-          <button className="btn btn-secondary px-2 py-1" disabled={rowPage <= 1} onClick={() => setRowPage((p) => p - 1)}>
+          <button className="btn btn-secondary px-2 py-1" disabled={rowPage <= 1} onClick={() => setRowPage(rowPage - 1)}>
             Prev
           </button>{' '}
           {rowPage}/{rowCount}{' '}
-          <button className="btn btn-secondary px-2 py-1" disabled={rowPage >= rowCount} onClick={() => setRowPage((p) => p + 1)}>
+          <button className="btn btn-secondary px-2 py-1" disabled={rowPage >= rowCount} onClick={() => setRowPage(rowPage + 1)}>
             Next
           </button>
         </div>
         <div>
           Columns page{' '}
-          <button className="btn btn-secondary px-2 py-1" disabled={colPage <= 1} onClick={() => setColPage((p) => p - 1)}>
+          <button className="btn btn-secondary px-2 py-1" disabled={colPage <= 1} onClick={() => setColPage(colPage - 1)}>
             Prev
           </button>{' '}
           {colPage}/{colCount}{' '}
-          <button className="btn btn-secondary px-2 py-1" disabled={colPage >= colCount} onClick={() => setColPage((p) => p + 1)}>
+          <button className="btn btn-secondary px-2 py-1" disabled={colPage >= colCount} onClick={() => setColPage(colPage + 1)}>
             Next
           </button>
         </div>

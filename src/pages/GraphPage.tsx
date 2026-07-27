@@ -10,13 +10,13 @@ import {
   SOURCE_RELATIONSHIP_TYPES,
   type RequirementRelationship,
   type RequirementSourceLink,
-  type SourceRelationshipType,
 } from '../types/project'
 import { lookupLabel } from '../lib/defaults'
 import {
   countDistinctLinkedRequirements,
   requirementSourceLinkEndpoints,
 } from '../lib/sourceLinks'
+import { useGraphUrlState } from '../lib/urlState'
 
 interface NodePos {
   id: string
@@ -48,23 +48,62 @@ type GraphEdge =
       link: RequirementSourceLink
     }
 
+interface EdgePoint {
+  x: number
+  y: number
+}
+
+function boundaryPoint(
+  node: GraphNode,
+  position: NodePos,
+  toward: NodePos,
+  focused: boolean,
+): EdgePoint {
+  const dx = toward.x - position.x
+  const dy = toward.y - position.y
+  const distance = Math.hypot(dx, dy)
+  if (distance === 0) return { x: position.x, y: position.y }
+
+  const unitX = dx / distance
+  const unitY = dy / distance
+  if (node.kind === 'requirement') {
+    const radius = focused ? 28 : 22
+    return {
+      x: position.x + unitX * radius,
+      y: position.y + unitY * radius,
+    }
+  }
+
+  const horizontalDistance = unitX === 0 ? Number.POSITIVE_INFINITY : 36 / Math.abs(unitX)
+  const verticalDistance = unitY === 0 ? Number.POSITIVE_INFINITY : 22 / Math.abs(unitY)
+  const edgeDistance = Math.min(horizontalDistance, verticalDistance)
+  return {
+    x: position.x + unitX * edgeDistance,
+    y: position.y + unitY * edgeDistance,
+  }
+}
+
 export function GraphPage() {
   const project = useProjectStore((s) => s.project)!
-  const graphFocusId = useProjectStore((s) => s.graphFocusId)
-  const graphFocusKind = useProjectStore((s) => s.graphFocusKind)
-  const setGraphFocus = useProjectStore((s) => s.setGraphFocus)
-  const setGraphSourceFocus = useProjectStore((s) => s.setGraphSourceFocus)
-  const graphDepth = useProjectStore((s) => s.graphDepth)
-  const setGraphDepth = useProjectStore((s) => s.setGraphDepth)
-  const graphTypes = useProjectStore((s) => s.graphTypes)
-  const setGraphTypes = useProjectStore((s) => s.setGraphTypes)
-
-  const [statusFilter, setStatusFilter] = useState<string[]>([])
-  const [tagFilter, setTagFilter] = useState<string[]>([])
-  const [sourceLinkTypes, setSourceLinkTypes] = useState<SourceRelationshipType[]>([
-    ...SOURCE_RELATIONSHIP_TYPES,
-  ])
-  const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
+  const {
+    focusId: graphFocusId,
+    focusKind: graphFocusKind,
+    depth: graphDepth,
+    relationshipTypes: graphTypes,
+    sourceLinkTypes,
+    statusIds: statusFilter,
+    tagIds: tagFilter,
+    selectedEdgeId: selectedEdge,
+    setFocus,
+    setDepth: setGraphDepth,
+    setRelationshipTypes: setGraphTypes,
+    setSourceLinkTypes,
+    setStatusIds: setStatusFilter,
+    setTagIds: setTagFilter,
+    setSelectedEdge,
+  } = useGraphUrlState()
+  const setGraphFocus = (id: string | null) => setFocus('requirement', id)
+  const setGraphSourceFocus = (id: string | null) => setFocus('source', id)
   const [positions, setPositions] = useState<Record<string, NodePos>>({})
   const [hoveredRequirementId, setHoveredRequirementId] = useState<string | null>(null)
   const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null)
@@ -400,6 +439,10 @@ export function GraphPage() {
   const selectedEdgeObj = selectedEdge
     ? neighborhood.edges.find((edge) => edge.id === selectedEdge) || null
     : null
+  const graphNodesById = useMemo(
+    () => new Map(neighborhood.nodes.map((node) => [node.id, node])),
+    [neighborhood.nodes],
+  )
 
   const focusedSource =
     focusKind === 'source' && focusId ? sources.find((source) => source.id === focusId) || null : null
@@ -696,41 +739,98 @@ export function GraphPage() {
               className="h-[min(70vh,560px)] w-full bg-[linear-gradient(180deg,#f8fafc,#eef3f8)] xl:h-[min(75vh,640px)]"
             >
               <defs>
-                <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                  <path d="M0,0 L6,3 L0,6 Z" fill="#1f5f8b" />
+                <marker
+                  id="arrow"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="8"
+                  refY="4"
+                  orient="auto"
+                  markerUnits="userSpaceOnUse"
+                >
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#1f5f8b" />
                 </marker>
-                <marker id="arrow-source" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                  <path d="M0,0 L6,3 L0,6 Z" fill="#7a3e00" />
+                <marker
+                  id="arrow-source"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="8"
+                  refY="4"
+                  orient="auto"
+                  markerUnits="userSpaceOnUse"
+                >
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#9a6b2f" />
+                </marker>
+                <marker
+                  id="arrow-selected"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="8"
+                  refY="4"
+                  orient="auto"
+                  markerUnits="userSpaceOnUse"
+                >
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#7a3e00" />
                 </marker>
               </defs>
               {neighborhood.edges.map((edge) => {
-                const a = positions[edge.fromId]
-                const b = positions[edge.toId]
-                if (!a || !b) return null
+                const arrowFromId =
+                  edge.kind === 'relationship' && edge.type === 'Child of'
+                    ? edge.toId
+                    : edge.fromId
+                const arrowToId =
+                  edge.kind === 'relationship' && edge.type === 'Child of'
+                    ? edge.fromId
+                    : edge.toId
+                const arrowFrom = positions[arrowFromId]
+                const arrowTo = positions[arrowToId]
+                const fromNode = graphNodesById.get(arrowFromId)
+                const toNode = graphNodesById.get(arrowToId)
+                if (!arrowFrom || !arrowTo || !fromNode || !toNode) return null
+                const start = boundaryPoint(
+                  fromNode,
+                  arrowFrom,
+                  arrowTo,
+                  arrowFromId === neighborhood.focusNodeId,
+                )
+                const end = boundaryPoint(
+                  toNode,
+                  arrowTo,
+                  arrowFrom,
+                  arrowToId === neighborhood.focusNodeId,
+                )
                 const isSourceLink = edge.kind === 'source-link'
                 const selected = selectedEdge === edge.id
                 return (
                   <g key={edge.id}>
                     <line
-                      x1={a.x}
-                      y1={a.y}
-                      x2={b.x}
-                      y2={b.y}
+                      x1={start.x}
+                      y1={start.y}
+                      x2={end.x}
+                      y2={end.y}
                       stroke={selected ? '#7a3e00' : isSourceLink ? '#9a6b2f' : '#1f5f8b'}
                       strokeWidth={selected ? 2.5 : 1.5}
                       strokeDasharray={isSourceLink ? '5 4' : undefined}
-                      markerEnd={isSourceLink ? 'url(#arrow-source)' : 'url(#arrow)'}
+                      markerEnd={
+                        selected
+                          ? 'url(#arrow-selected)'
+                          : isSourceLink
+                            ? 'url(#arrow-source)'
+                            : 'url(#arrow)'
+                      }
                       className="cursor-pointer"
                       onClick={() => setSelectedEdge(edge.id)}
                     />
                     <text
-                      x={(a.x + b.x) / 2}
-                      y={(a.y + b.y) / 2 - 6}
+                      x={(arrowFrom.x + arrowTo.x) / 2}
+                      y={(arrowFrom.y + arrowTo.y) / 2 - 6}
                       textAnchor="middle"
                       fontSize="10"
                       fill="#4a5568"
                     >
-                      {edge.type}
+                      {edge.kind === 'relationship' && edge.type === 'Child of'
+                        ? 'Parent of'
+                        : edge.type}
                     </text>
                   </g>
                 )
