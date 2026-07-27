@@ -5,31 +5,54 @@ import type {
   SortSpec,
   TagLogic,
 } from '../types/project'
-import { plainTextFromHtml } from './sanitize'
 import { lookupByValue, lookupLabel } from './defaults'
+import {
+  buildProjectIndexes,
+  currentAssessmentIndexed,
+  matchesGapIndexed,
+  type ProjectIndexes,
+} from './projectIndexes'
 
-export function currentAssessment(project: ProjectData, requirementId: string) {
-  const current = project.assessments.find((a) => a.requirementId === requirementId && a.isCurrent)
-  if (current) return current
-  return project.assessments
-    .filter((a) => a.requirementId === requirementId)
-    .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))[0]
+/** Fast HTML → plain text for search (no DOMParser). */
+export function cheapPlainText(html: string | undefined): string {
+  if (!html) return ''
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
-export function requirementSearchText(project: ProjectData, req: Requirement): string {
+export function currentAssessment(project: ProjectData, requirementId: string, indexes?: ProjectIndexes) {
+  if (indexes) return currentAssessmentIndexed(indexes, requirementId)
+  const current = project.assessments.find((a) => a.requirementId === requirementId && a.isCurrent)
+  if (current) return current
+  let best = undefined as (typeof project.assessments)[number] | undefined
+  for (const a of project.assessments) {
+    if (a.requirementId !== requirementId) continue
+    if (!best || a.modifiedAt > best.modifiedAt) best = a
+  }
+  return best
+}
+
+export function requirementSearchText(project: ProjectData, req: Requirement, indexes?: ProjectIndexes): string {
   const evidenceText = req.evidenceIds
     .map((id) => {
-      const e = project.evidence.find((x) => x.id === id)
+      const e = indexes ? indexes.evidenceById.get(id) : project.evidence.find((x) => x.id === id)
       return e ? `${e.title} ${e.fileName} ${e.filePath} ${e.notes}` : ''
     })
     .join(' ')
   return [
     req.sourceId,
     req.shortTitle,
-    plainTextFromHtml(req.requirementText),
-    plainTextFromHtml(req.description),
-    plainTextFromHtml(req.analystNotes),
-    plainTextFromHtml(req.rationale),
+    cheapPlainText(req.requirementText),
+    cheapPlainText(req.description),
+    cheapPlainText(req.analystNotes),
+    cheapPlainText(req.rationale),
     req.sourceDocument,
     req.sourceSection,
     evidenceText,
@@ -51,16 +74,24 @@ function inDateRange(value: string, from: string, to: string): boolean {
   return true
 }
 
+export function matchesGap(project: ProjectData, req: Requirement, gapKey: string, indexes?: ProjectIndexes): boolean {
+  const idx = indexes ?? buildProjectIndexes(project)
+  return matchesGapIndexed(project, idx, req, gapKey)
+}
+
 export function matchesFilters(
   project: ProjectData,
   req: Requirement,
   searchQuery: string,
   filters: RequirementFilters,
   tagLogic: TagLogic,
+  indexes?: ProjectIndexes,
 ): boolean {
+  const idx = indexes ?? buildProjectIndexes(project)
+
   if (searchQuery.trim()) {
     const q = searchQuery.trim().toLowerCase()
-    if (!requirementSearchText(project, req).includes(q)) return false
+    if (!requirementSearchText(project, req, idx).includes(q)) return false
   }
 
   if (filters.statusIds.length && !filters.statusIds.includes(req.statusId)) return false
@@ -72,36 +103,30 @@ export function matchesFilters(
     return false
 
   if (filters.verificationMethodIds.length) {
-    const methods = project.verifications
-      .filter((v) => v.requirementId === req.id)
-      .map((v) => v.methodId)
+    const methods = (idx.verificationsByReq.get(req.id) || []).map((v) => v.methodId)
     if (!filters.verificationMethodIds.some((id) => methods.includes(id))) return false
   }
 
   if (filters.assessmentResultIds.length) {
-    const assessment = currentAssessment(project, req.id)
+    const assessment = currentAssessmentIndexed(idx, req.id)
     if (!assessment || !filters.assessmentResultIds.includes(assessment.resultId)) return false
   }
 
   if (filters.testActivityIds.length) {
-    const linked = project.requirementActivityLinks
-      .filter((l) => l.requirementId === req.id)
-      .map((l) => l.testActivityId)
+    const linked = (idx.linksByReq.get(req.id) || []).map((l) => l.testActivityId)
     if (!filters.testActivityIds.some((id) => linked.includes(id))) return false
   }
 
   if (filters.testPhaseIds.length) {
-    const phases = project.requirementActivityLinks
-      .filter((l) => l.requirementId === req.id)
-      .map((l) => project.testActivities.find((t) => t.id === l.testActivityId)?.phaseId)
+    const phases = (idx.linksByReq.get(req.id) || [])
+      .map((l) => idx.activityById.get(l.testActivityId)?.phaseId)
       .filter(Boolean) as string[]
     if (!filters.testPhaseIds.some((id) => phases.includes(id))) return false
   }
 
   if (filters.owners.length) {
-    const owners = project.requirementActivityLinks
-      .filter((l) => l.requirementId === req.id)
-      .map((l) => project.testActivities.find((t) => t.id === l.testActivityId)?.owner || '')
+    const owners = (idx.linksByReq.get(req.id) || [])
+      .map((l) => idx.activityById.get(l.testActivityId)?.owner || '')
       .filter(Boolean)
     if (!filters.owners.some((o) => owners.includes(o))) return false
   }
@@ -121,53 +146,10 @@ export function matchesFilters(
   if (!inDateRange(req.modifiedAt, filters.modifiedFrom, filters.modifiedTo)) return false
 
   if (filters.gapKey) {
-    if (!matchesGap(project, req, filters.gapKey)) return false
+    if (!matchesGapIndexed(project, idx, req, filters.gapKey)) return false
   }
 
   return true
-}
-
-export function matchesGap(project: ProjectData, req: Requirement, gapKey: string): boolean {
-  const activeId = lookupByValue(project.lookups.statuses, 'Active')?.id
-  const derivedFrom = project.relationships.some(
-    (r) => r.targetRequirementId === req.id && r.type === 'Derived from',
-  )
-  const hasRelationships = project.relationships.some(
-    (r) => r.sourceRequirementId === req.id || r.targetRequirementId === req.id,
-  )
-  const hasActivity = project.requirementActivityLinks.some((l) => l.requirementId === req.id)
-  const hasMethod = project.verifications.some((v) => v.requirementId === req.id && v.methodId)
-  const conflicting = project.relationships.some(
-    (r) =>
-      (r.sourceRequirementId === req.id || r.targetRequirementId === req.id) &&
-      (r.type === 'Conflicts with' || r.type === 'Duplicates'),
-  )
-  const broken = project.relationships.some((r) => {
-    const ids = new Set(project.requirements.map((x) => x.id))
-    return (
-      (r.sourceRequirementId === req.id || r.targetRequirementId === req.id) &&
-      (!ids.has(r.sourceRequirementId) || !ids.has(r.targetRequirementId))
-    )
-  })
-
-  switch (gapKey) {
-    case 'derived-without-source':
-      return req.isDerived && !derivedFrom
-    case 'no-relationships':
-      return !hasRelationships
-    case 'active-no-activity':
-      return req.statusId === activeId && !hasActivity
-    case 'active-no-method':
-      return req.statusId === activeId && !hasMethod
-    case 'no-tags':
-      return req.tagIds.length === 0
-    case 'conflict-or-duplicate':
-      return conflicting
-    case 'broken-references':
-      return broken
-    default:
-      return true
-  }
 }
 
 export function filterRequirements(
@@ -177,10 +159,11 @@ export function filterRequirements(
   tagLogic: TagLogic,
   sort: SortSpec[],
 ): Requirement[] {
+  const indexes = buildProjectIndexes(project)
   const filtered = project.requirements.filter((req) =>
-    matchesFilters(project, req, searchQuery, filters, tagLogic),
+    matchesFilters(project, req, searchQuery, filters, tagLogic, indexes),
   )
-  return sortRequirements(project, filtered, sort)
+  return sortRequirements(project, filtered, sort, indexes)
 }
 
 function compareValues(a: string | number, b: string | number, direction: 'asc' | 'desc'): number {
@@ -193,12 +176,14 @@ export function sortRequirements(
   project: ProjectData,
   requirements: Requirement[],
   sort: SortSpec[],
+  indexes?: ProjectIndexes,
 ): Requirement[] {
   const specs = sort.length ? sort : [{ field: 'sourceId', direction: 'asc' as const }]
+  const idx = indexes ?? buildProjectIndexes(project)
   return [...requirements].sort((a, b) => {
     for (const spec of specs) {
-      const av = sortValue(project, a, spec.field)
-      const bv = sortValue(project, b, spec.field)
+      const av = sortValue(project, a, spec.field, idx)
+      const bv = sortValue(project, b, spec.field, idx)
       const cmp = compareValues(av, bv, spec.direction)
       if (cmp !== 0) return cmp
     }
@@ -206,7 +191,12 @@ export function sortRequirements(
   })
 }
 
-function sortValue(project: ProjectData, req: Requirement, field: string): string {
+function sortValue(
+  project: ProjectData,
+  req: Requirement,
+  field: string,
+  indexes: ProjectIndexes,
+): string {
   switch (field) {
     case 'sourceId':
       return req.sourceId.toLowerCase()
@@ -221,7 +211,7 @@ function sortValue(project: ProjectData, req: Requirement, field: string): strin
     case 'priority':
       return lookupLabel(project.lookups.priorities, req.priorityId).toLowerCase()
     case 'assessment': {
-      const a = currentAssessment(project, req.id)
+      const a = currentAssessmentIndexed(indexes, req.id)
       return a ? lookupLabel(project.lookups.assessmentResults, a.resultId).toLowerCase() : ''
     }
     case 'modifiedAt':
@@ -253,15 +243,9 @@ export interface DashboardStats {
 }
 
 export function buildDashboardStats(project: ProjectData): DashboardStats {
-  const total = project.requirements.length
-  const statusCounts = project.lookups.statuses
-    .filter((s) => s.active)
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((s) => ({
-      id: s.id,
-      label: s.value,
-      count: project.requirements.filter((r) => r.statusId === s.id).length,
-    }))
+  const indexes = buildProjectIndexes(project)
+  const statusCountMap = new Map<string, number>()
+  for (const s of project.lookups.statuses) statusCountMap.set(s.id, 0)
 
   const notYetId = lookupByValue(project.lookups.assessmentResults, 'Not Yet Assessed')?.id
   const metId = lookupByValue(project.lookups.assessmentResults, 'Met')?.id
@@ -279,22 +263,59 @@ export function buildDashboardStats(project: ProjectData): DashboardStats {
   let notMet = 0
   let inconclusive = 0
 
+  const gapCounts: Record<string, number> = {
+    'derived-without-source': 0,
+    'no-relationships': 0,
+    'active-no-activity': 0,
+    'active-no-method': 0,
+    'no-tags': 0,
+    'conflict-or-duplicate': 0,
+    'broken-references': 0,
+  }
+
+  let recentChanges = project.requirements.slice(0, 10)
+  if (project.requirements.length > 10) {
+    // Partial top-N without full sort of 900 when possible: sort copy once.
+    recentChanges = [...project.requirements]
+      .sort((a, b) => (a.modifiedAt < b.modifiedAt ? 1 : a.modifiedAt > b.modifiedAt ? -1 : 0))
+      .slice(0, 10)
+  } else {
+    recentChanges = [...project.requirements].sort((a, b) =>
+      a.modifiedAt < b.modifiedAt ? 1 : a.modifiedAt > b.modifiedAt ? -1 : 0,
+    )
+  }
+
   for (const req of project.requirements) {
-    if (project.verifications.some((v) => v.requirementId === req.id && v.methodId)) withMethod += 1
-    if (project.requirementActivityLinks.some((l) => l.requirementId === req.id)) withActivity += 1
-    if (req.evidenceIds.length > 0 || project.verifications.some((v) => v.requirementId === req.id && v.evidenceIds.length))
-      withEvidence += 1
-    const assessment = currentAssessment(project, req.id)
+    statusCountMap.set(req.statusId, (statusCountMap.get(req.statusId) || 0) + 1)
+
+    if (indexes.reqsWithMethod.has(req.id)) withMethod += 1
+    if (indexes.reqsWithActivity.has(req.id)) withActivity += 1
+    if (indexes.reqsWithEvidence.has(req.id)) withEvidence += 1
+
+    const assessment = currentAssessmentIndexed(indexes, req.id)
     if (!assessment || assessment.resultId === notYetId) {
       notYetAssessed += 1
     } else {
       assessed += 1
       if (assessment.resultId === metId) met += 1
-      if (assessment.resultId === partialId) partiallyMet += 1
-      if (assessment.resultId === notMetId) notMet += 1
-      if (assessment.resultId === inconclusiveId) inconclusive += 1
+      else if (assessment.resultId === partialId) partiallyMet += 1
+      else if (assessment.resultId === notMetId) notMet += 1
+      else if (assessment.resultId === inconclusiveId) inconclusive += 1
+    }
+
+    for (const key of Object.keys(gapCounts)) {
+      if (matchesGapIndexed(project, indexes, req, key)) gapCounts[key] += 1
     }
   }
+
+  const statusCounts = project.lookups.statuses
+    .filter((s) => s.active)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((s) => ({
+      id: s.id,
+      label: s.value,
+      count: statusCountMap.get(s.id) || 0,
+    }))
 
   const gapDefs = [
     { key: 'derived-without-source', label: 'Derived without source relationship' },
@@ -306,16 +327,6 @@ export function buildDashboardStats(project: ProjectData): DashboardStats {
     { key: 'broken-references', label: 'Broken references' },
   ]
 
-  const gaps = gapDefs.map((g) => ({
-    ...g,
-    count: project.requirements.filter((r) => matchesGap(project, r, g.key)).length,
-  }))
-
-  const recentChanges = [...project.requirements]
-    .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
-    .slice(0, 10)
-
-  void total
   return {
     statusCounts,
     verification: {
@@ -330,6 +341,6 @@ export function buildDashboardStats(project: ProjectData): DashboardStats {
       inconclusive,
     },
     recentChanges,
-    gaps,
+    gaps: gapDefs.map((g) => ({ ...g, count: gapCounts[g.key] || 0 })),
   }
 }

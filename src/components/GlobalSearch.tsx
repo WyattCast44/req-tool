@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
-import { plainTextFromHtml } from '../lib/sanitize'
+import { cheapPlainText } from '../lib/filters'
 import { lookupLabel } from '../lib/defaults'
 
 type SearchHit =
@@ -43,7 +43,7 @@ export function GlobalSearch() {
       const hay = [
         req.sourceId,
         req.shortTitle,
-        plainTextFromHtml(req.requirementText),
+        cheapPlainText(req.requirementText),
         req.sourceDocument,
         req.sourceSection,
         req.editorName,
@@ -56,7 +56,7 @@ export function GlobalSearch() {
         kind: 'requirement',
         id: req.id,
         primary: req.sourceId,
-        secondary: req.shortTitle || plainTextFromHtml(req.requirementText).slice(0, 80) || 'Untitled',
+        secondary: req.shortTitle || cheapPlainText(req.requirementText).slice(0, 80) || 'Untitled',
         meta: lookupLabel(project.lookups.statuses, req.statusId),
       })
       if (reqHits.length >= MAX_HITS) break
@@ -64,7 +64,7 @@ export function GlobalSearch() {
 
     const actHits: SearchHit[] = []
     for (const act of project.testActivities) {
-      const hay = [act.title, act.owner, plainTextFromHtml(act.objectives), plainTextFromHtml(act.notes)]
+      const hay = [act.title, act.owner, cheapPlainText(act.objectives), cheapPlainText(act.notes)]
         .join(' ')
         .toLowerCase()
       if (!hay.includes(q)) continue

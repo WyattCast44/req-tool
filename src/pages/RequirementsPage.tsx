@@ -8,6 +8,7 @@ import { DataTable } from '../components/DataTable'
 import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { useProjectStore } from '../store/projectStore'
 import { currentAssessment, filterRequirements } from '../lib/filters'
+import { buildProjectIndexes } from '../lib/projectIndexes'
 import { lookupLabel } from '../lib/defaults'
 import { formatDateTime } from '../lib/ids'
 import type { ColumnId, ProjectData, Requirement } from '../types/project'
@@ -47,13 +48,13 @@ const COLUMN_LABELS: Record<ColumnId, string> = {
 }
 
 function toRows(project: ProjectData, requirements: Requirement[]): RequirementRow[] {
+  const indexes = buildProjectIndexes(project)
   return requirements.map((req) => {
-    const assessment = currentAssessment(project, req.id)
+    const assessment = currentAssessment(project, req.id, indexes)
     const assessmentLabel = assessment
       ? lookupLabel(project.lookups.assessmentResults, assessment.resultId)
       : 'Not Yet Assessed'
-    const methods = project.verifications
-      .filter((v) => v.requirementId === req.id)
+    const methods = (indexes.verificationsByReq.get(req.id) || [])
       .map((v) => lookupLabel(project.lookups.verificationMethods, v.methodId))
       .join(', ')
     const tags = req.tagIds

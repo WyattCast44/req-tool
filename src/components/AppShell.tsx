@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
 import { formatDateTime } from '../lib/ids'
 import { GlobalSearch } from './GlobalSearch'
+import { ErrorBoundary } from './ErrorBoundary'
 
 const NAV = [
   { to: '/', label: 'Dashboard', end: true },
@@ -164,7 +165,9 @@ export function AppShell() {
               </NavLink>
             ))}
           </div>
-          <Outlet />
+          <ErrorBoundary title="This view failed to render">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 
