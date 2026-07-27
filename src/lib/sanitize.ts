@@ -29,9 +29,16 @@ export function sanitizeHtml(html: string): string {
 }
 
 export function plainTextFromHtml(html: string): string {
-  const clean = sanitizeHtml(html)
-  const doc = new DOMParser().parseFromString(clean, 'text/html')
-  return (doc.body.textContent || '').replace(/\s+/g, ' ').trim()
+  // Prefer the fast path for bulk search/export; avoid DOMParser on large datasets.
+  return (html ?? '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export function ensureLinkSafety(html: string): string {

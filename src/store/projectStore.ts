@@ -131,19 +131,36 @@ interface ProjectStore extends UiState {
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
 
+function yieldToUi(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => setTimeout(resolve, 0))
+    } else {
+      setTimeout(resolve, 0)
+    }
+  })
+}
+
 async function persist(get: () => ProjectStore) {
   const state = get()
   if (!state.project) return
   const localSavedAt = nowIso()
-  await saveWorkspace({
-    projectId: state.project.metadata.id,
-    project: state.project,
-    mode: state.mode,
-    hasUnexportedChanges: state.hasUnexportedChanges,
-    localSavedAt,
-    sourceFileName: state.sourceFileName,
-  })
-  get().localSavedAt = localSavedAt
+  try {
+    await saveWorkspace({
+      projectId: state.project.metadata.id,
+      project: state.project,
+      mode: state.mode,
+      hasUnexportedChanges: state.hasUnexportedChanges,
+      localSavedAt,
+      sourceFileName: state.sourceFileName,
+    })
+    get().localSavedAt = localSavedAt
+  } catch (error) {
+    console.error('Local autosave failed', error)
+    get().setToast(
+      'Local browser autosave failed (storage quota or private mode). Export a project file before closing.',
+    )
+  }
 }
 
 function schedulePersist(get: () => ProjectStore, set: (partial: Partial<ProjectStore>) => void) {
@@ -152,7 +169,7 @@ function schedulePersist(get: () => ProjectStore, set: (partial: Partial<Project
     void persist(get).then(() => {
       set({ localSavedAt: get().localSavedAt })
     })
-  }, 250)
+  }, 400)
 }
 
 function touchProject(project: ProjectData): ProjectData {
@@ -269,32 +286,46 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   importProjectFile: async (file) => {
-    const text = await file.text()
-    const result = parseAndValidateProject(text)
-    if (!result.ok || !result.project) {
+    try {
+      const text = await file.text()
+      await yieldToUi()
+      const result = parseAndValidateProject(text)
+      if (!result.ok || !result.project) {
+        return {
+          ok: false,
+          messages: result.issues.map((i) => `${i.level.toUpperCase()}: ${i.message}`),
+        }
+      }
+      set({
+        project: result.project,
+        mode: 'review',
+        hasUnexportedChanges: false,
+        sourceFileName: file.name,
+        recoveryAvailable: false,
+        lastExportNotice: false,
+        loadIssues: result.issues.map((i) => i.message),
+        searchQuery: '',
+        filters: emptyFilters(),
+        page: 1,
+        selectedRequirementIds: [],
+        graphFocusId: result.project.requirements[0]?.id ?? null,
+      })
+      // Defer IndexedDB write so the dashboard can paint first on large projects.
+      setTimeout(() => {
+        void persist(get)
+      }, 0)
+      return {
+        ok: true,
+        messages: result.issues.map((i) => i.message),
+      }
+    } catch (error) {
+      console.error('Import failed', error)
       return {
         ok: false,
-        messages: result.issues.map((i) => `${i.level.toUpperCase()}: ${i.message}`),
+        messages: [
+          `ERROR: Failed to open project file${error instanceof Error ? `: ${error.message}` : '.'}`,
+        ],
       }
-    }
-    set({
-      project: result.project,
-      mode: 'review',
-      hasUnexportedChanges: false,
-      sourceFileName: file.name,
-      recoveryAvailable: false,
-      lastExportNotice: false,
-      loadIssues: result.issues.map((i) => i.message),
-      searchQuery: '',
-      filters: emptyFilters(),
-      page: 1,
-      selectedRequirementIds: [],
-      graphFocusId: result.project.requirements[0]?.id ?? null,
-    })
-    await persist(get)
-    return {
-      ok: true,
-      messages: result.issues.map((i) => i.message),
     }
   },
 
