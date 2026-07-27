@@ -130,6 +130,8 @@ export function createEmptyProject(name = 'New Operational Test Project'): Proje
     tags: [],
     requirements: [],
     relationships: [],
+    sources: [],
+    requirementSourceLinks: [],
     testActivities: [],
     requirementActivityLinks: [],
     evidence: [],

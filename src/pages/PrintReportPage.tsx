@@ -103,6 +103,9 @@ export function PrintReportPage() {
               const evidence = req.evidenceIds
                 .map((id) => project.evidence.find((e) => e.id === id))
                 .filter(Boolean)
+              const sourceLinks = (project.requirementSourceLinks ?? []).filter(
+                (link) => link.requirementId === req.id,
+              )
 
               return (
                 <article
@@ -119,9 +122,6 @@ export function PrintReportPage() {
                     </div>
                     <div>Type: {lookupLabel(project.lookups.types, req.typeId)}</div>
                     <div>Priority: {lookupLabel(project.lookups.priorities, req.priorityId)}</div>
-                    <div>
-                      Source: {req.sourceDocument || '—'} {req.sourceDocumentVersion} {req.sourceSection}
-                    </div>
                     <div>Tags: {tags.join(', ') || '—'}</div>
                   </div>
                   <div className="mt-3">
@@ -150,6 +150,25 @@ export function PrintReportPage() {
                       <RichTextView html={assessment.narrative} />
                     </div>
                   )}
+                  <div className="mt-3 text-sm">
+                    <div className="field-label">Sources</div>
+                    {sourceLinks.length === 0 && <div>—</div>}
+                    <ul className="list-disc space-y-1 pl-5">
+                      {sourceLinks.map((link) => {
+                        const source = (project.sources ?? []).find((item) => item.id === link.sourceId)
+                        return (
+                          <li key={link.id}>
+                            <span>
+                              {link.type} {source?.identifier || source?.title || 'Missing source'}
+                              {link.locator ? ` — ${link.locator}` : ''}
+                            </span>
+                            {link.rationale && <RichTextView html={link.rationale} />}
+                            {link.notes && <RichTextView html={link.notes} />}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
                   <div className="mt-3 text-sm">
                     <div className="field-label">Relationships</div>
                     {rels.length === 0 && <div>—</div>}

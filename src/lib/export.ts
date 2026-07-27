@@ -58,9 +58,8 @@ export function requirementsToCsv(
     'Classification',
     'Type',
     'Priority',
-    'Source Document',
-    'Source Version',
-    'Source Section',
+    'Linked Sources',
+    'Source Relationships',
     'Tags',
     'Is Derived',
     'Verification Methods',
@@ -98,6 +97,23 @@ export function requirementsToCsv(
       .map((id) => project.evidence.find((e) => e.id === id)?.filePath)
       .filter(Boolean)
       .join('|')
+    const sourceLinks = (project.requirementSourceLinks ?? []).filter(
+      (link) => link.requirementId === req.id,
+    )
+    const linkedSources = sourceLinks
+      .map((link) => {
+        const source = (project.sources ?? []).find((item) => item.id === link.sourceId)
+        return source ? source.identifier || source.title : undefined
+      })
+      .filter(Boolean)
+      .join('|')
+    const sourceRelationships = sourceLinks
+      .map((link) => {
+        const source = (project.sources ?? []).find((item) => item.id === link.sourceId)
+        const label = source?.identifier || source?.title || link.sourceId
+        return `${link.type}: ${label}${link.locator ? ` (${link.locator})` : ''}`
+      })
+      .join('|')
 
     return [
       req.sourceId,
@@ -107,9 +123,8 @@ export function requirementsToCsv(
       lookupLabel(project.lookups.classifications, req.classificationId),
       lookupLabel(project.lookups.types, req.typeId),
       lookupLabel(project.lookups.priorities, req.priorityId),
-      req.sourceDocument,
-      req.sourceDocumentVersion,
-      req.sourceSection,
+      linkedSources,
+      sourceRelationships,
       tagNames,
       req.isDerived ? 'Yes' : 'No',
       methods,

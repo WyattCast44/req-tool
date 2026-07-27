@@ -85,7 +85,7 @@
   }
 
   .app-side-nav {
-    top: calc(var(--top-navbar-height, 0px) + 0.5rem);
+    top: calc(var(--top-navbar-height, 0px) + 1rem);
   }
 
   .panel {
@@ -236,6 +236,16 @@
     text-transform: uppercase;
     border: 1px solid transparent;
     line-height: 1.35;
+  }
+
+  .requirement-hover-preview {
+    width: min(20rem, calc(100vw - 2rem));
+    max-width: 20rem;
+    padding: 0.7rem 0.8rem;
+    background: #fff;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 2px;
+    box-shadow: 0 10px 28px rgba(21, 32, 43, 0.16);
   }
 
   .table-wrap {
@@ -761,6 +771,160 @@
   .global-search-item:hover,
   .global-search-item[data-active='true'] {
     background: var(--color-accent-soft);
+  }
+
+  .fuzzy-select {
+    position: relative;
+  }
+
+  .fuzzy-select-input {
+    padding-right: 1.55rem;
+  }
+
+  .fuzzy-select-chevron {
+    pointer-events: none;
+    position: absolute;
+    right: 0.45rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-ink-muted);
+    font-size: 0.7rem;
+    line-height: 1;
+  }
+
+  .fuzzy-select-panel {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 0;
+    right: 0;
+    z-index: 40;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 2px;
+    box-shadow: 0 8px 24px rgba(21, 32, 43, 0.12);
+    max-height: 16rem;
+    overflow: auto;
+  }
+
+  .fuzzy-select-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.4rem 0.55rem;
+    border: 0;
+    border-bottom: 1px solid #eef1f4;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--color-ink);
+  }
+
+  .fuzzy-select-item:hover,
+  .fuzzy-select-item[data-active='true'] {
+    background: var(--color-accent-soft);
+  }
+
+  .fuzzy-select-item[aria-selected='true'] {
+    font-weight: 600;
+  }
+
+  .fuzzy-multi-select-control {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    min-height: 2rem;
+    width: 100%;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-control);
+    background: #fff;
+    padding: 0.25rem 1.55rem 0.25rem 0.35rem;
+    cursor: text;
+  }
+
+  .fuzzy-multi-select-control.is-open {
+    border-color: var(--color-accent);
+  }
+
+  .fuzzy-multi-select-control.is-disabled {
+    background: var(--color-panel);
+    cursor: not-allowed;
+  }
+
+  .fuzzy-multi-select-chips {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .fuzzy-multi-select-chip {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.2rem;
+    border: 1px solid var(--color-line);
+    border-radius: 2px;
+    background: var(--color-panel);
+    padding: 0.1rem 0.2rem 0.1rem 0.35rem;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    color: var(--color-ink);
+  }
+
+  .fuzzy-multi-select-chip-remove {
+    border: 0;
+    background: transparent;
+    color: var(--color-ink-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 0 0.15rem;
+  }
+
+  .fuzzy-multi-select-chip-remove:hover {
+    color: var(--color-danger);
+  }
+
+  .fuzzy-multi-select-input {
+    flex: 1;
+    min-width: 4.5rem;
+    border: 0;
+    outline: none;
+    background: transparent;
+    padding: 0.15rem 0.1rem;
+    color: var(--color-ink);
+    font-size: 0.8rem;
+  }
+
+  .fuzzy-multi-select-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .fuzzy-multi-select-check {
+    display: inline-flex;
+    width: 0.9rem;
+    height: 0.9rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 2px;
+    background: #fff;
+    color: #fff;
+    font-size: 0.65rem;
+    line-height: 1;
+  }
+
+  .fuzzy-multi-select-check.is-checked {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
   }
 
   .sr-only {

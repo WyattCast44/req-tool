@@ -1,6 +1,6 @@
 {
   "formatId": "otreq-project",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "applicationVersion": "1.0.0",
   "metadata": {
     "id": "00000000-0000-4000-8000-000000000001",
@@ -12,7 +12,7 @@
     "exportSequence": 1,
     "lastExportedAt": "2026-07-25T16:45:00.000Z",
     "lastExportEditor": "A. Rivera",
-    "schemaVersion": 1,
+    "schemaVersion": 2,
     "applicationVersion": "1.0.0",
     "editorNameDefault": "A. Rivera"
   },
@@ -553,9 +553,6 @@
   ],
   "requirements": [
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.2.1",
       "description": "<p>Primary detection requirement for OT mission threads.</p>",
       "analystNotes": "",
       "rationale": "<p>Supports the surveillance critical operational issue.</p>",
@@ -584,9 +581,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.2.2",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -612,9 +606,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.4.1",
       "description": "",
       "analystNotes": "<ul><li>Confirm measurement point definitions with Comms IPT.</li></ul>",
       "rationale": "",
@@ -639,9 +630,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000302"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.5.2",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -669,9 +657,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.6.1",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -697,9 +682,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.7.1",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -724,9 +706,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000302"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.8.1",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -751,9 +730,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.8.2",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -777,9 +753,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.9.1",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -803,9 +776,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.9.2",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -830,9 +800,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.10.1",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -854,9 +821,6 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
-      "sourceDocument": "SRD",
-      "sourceDocumentVersion": "2.1",
-      "sourceSection": "3.2.3",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -968,6 +932,170 @@
       "rationale": "EMI hardening options may increase comms latency.",
       "notes": "Needs trade study during OT planning.",
       "createdAt": "2026-07-25T16:45:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z",
+      "editorName": "A. Rivera"
+    }
+  ],
+  "sources": [
+    {
+      "id": "00000000-0000-4000-8000-000000004501",
+      "identifier": "SRD",
+      "title": "EaglesNest System Requirements Document",
+      "sourceType": "Requirements document",
+      "version": "2.1",
+      "publisher": "EaglesNest Program Office",
+      "publicationDate": "2026-04-15",
+      "url": "",
+      "filePath": "\\\\fileshare\\Program\\Requirements\\EaglesNest_SRD_v2.1.pdf",
+      "description": "<p>Approved system requirements baseline used to establish OT traceability.</p>",
+      "notes": "<p>Coordinate proposed interpretations with the requirements control board.</p>",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z",
+      "editorName": "A. Rivera"
+    }
+  ],
+  "requirementSourceLinks": [
+    {
+      "id": "00000000-0000-4000-8000-000000004601",
+      "requirementId": "00000000-0000-4000-8000-000000002001",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.2.1",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004602",
+      "requirementId": "00000000-0000-4000-8000-000000002002",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.2.2",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004603",
+      "requirementId": "00000000-0000-4000-8000-000000002003",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.4.1",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004604",
+      "requirementId": "00000000-0000-4000-8000-000000002004",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.5.2",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004605",
+      "requirementId": "00000000-0000-4000-8000-000000002005",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.6.1",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004606",
+      "requirementId": "00000000-0000-4000-8000-000000002006",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.7.1",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004607",
+      "requirementId": "00000000-0000-4000-8000-000000002007",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.8.1",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004608",
+      "requirementId": "00000000-0000-4000-8000-000000002008",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.8.2",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004609",
+      "requirementId": "00000000-0000-4000-8000-000000002009",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.9.1",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004610",
+      "requirementId": "00000000-0000-4000-8000-000000002010",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.9.2",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004611",
+      "requirementId": "00000000-0000-4000-8000-000000002011",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Cites",
+      "locator": "§ 3.10.1",
+      "rationale": "",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
+      "modifiedAt": "2026-07-20T14:30:00.000Z",
+      "editorName": "A. Rivera"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004612",
+      "requirementId": "00000000-0000-4000-8000-000000002012",
+      "sourceId": "00000000-0000-4000-8000-000000004501",
+      "type": "Derived from",
+      "locator": "§ 3.2.3",
+      "rationale": "<p>Operational interpretation derived from the approved system baseline.</p>",
+      "notes": "",
+      "createdAt": "2026-07-20T14:30:00.000Z",
       "modifiedAt": "2026-07-25T16:45:00.000Z",
       "editorName": "A. Rivera"
     }
@@ -1274,7 +1402,6 @@
         "testActivityIds": [],
         "testPhaseIds": [],
         "owners": [],
-        "sourceDocuments": [],
         "tagIds": [],
         "createdFrom": "",
         "createdTo": "",
@@ -1319,7 +1446,6 @@
         "testActivityIds": [],
         "testPhaseIds": [],
         "owners": [],
-        "sourceDocuments": [],
         "tagIds": [],
         "createdFrom": "",
         "createdTo": "",
@@ -1360,7 +1486,6 @@
         "testActivityIds": [],
         "testPhaseIds": [],
         "owners": [],
-        "sourceDocuments": [],
         "tagIds": [
           "00000000-0000-4000-8000-000000001304"
         ],

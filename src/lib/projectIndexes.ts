@@ -19,6 +19,8 @@ export interface ProjectIndexes {
   reqIds: Set<string>
   activityById: Map<string, ProjectData['testActivities'][number]>
   evidenceById: Map<string, ProjectData['evidence'][number]>
+  sourceById: Map<string, ProjectData['sources'][number]>
+  sourceLinksByReq: Map<string, ProjectData['requirementSourceLinks'][number][]>
   verificationsByReq: Map<string, VerificationRecord[]>
   linksByReq: Map<string, RequirementActivityLink[]>
   assessmentsByReq: Map<string, AssessmentRecord[]>
@@ -48,6 +50,11 @@ export function buildProjectIndexes(project: ProjectData): ProjectIndexes {
   const reqIds = new Set(project.requirements.map((r) => r.id))
   const activityById = new Map(project.testActivities.map((t) => [t.id, t]))
   const evidenceById = new Map(project.evidence.map((e) => [e.id, e]))
+  const sourceById = new Map((project.sources ?? []).map((source) => [source.id, source]))
+  const sourceLinksByReq = new Map<string, ProjectData['requirementSourceLinks'][number][]>()
+  for (const link of project.requirementSourceLinks ?? []) {
+    pushMap(sourceLinksByReq, link.requirementId, link)
+  }
 
   const verificationsByReq = new Map<string, VerificationRecord[]>()
   const reqsWithMethod = new Set<string>()
@@ -118,10 +125,23 @@ export function buildProjectIndexes(project: ProjectData): ProjectIndexes {
     }
   }
 
+  for (const link of project.requirementSourceLinks ?? []) {
+    const flags = ensure(link.requirementId)
+    flags.hasAny = true
+    if (!reqIds.has(link.requirementId) || !sourceById.has(link.sourceId)) {
+      flags.hasBroken = true
+    }
+    if (link.type === 'Derived from') {
+      flags.hasDerivedFromSource = true
+    }
+  }
+
   return {
     reqIds,
     activityById,
     evidenceById,
+    sourceById,
+    sourceLinksByReq,
     verificationsByReq,
     linksByReq,
     assessmentsByReq,

@@ -22,6 +22,10 @@ Follow the existing TypeScript style: two-space indentation, single quotes, no s
 
 There is currently no unit-test framework or coverage threshold. Every change should pass `npm run lint`, `npm run build`, and `npm run smoke`. Manually exercise affected workflows in both Review and Edit modes. For import, graph, table, or performance changes, test both files in `examples/`. Verify that production remains usable from `file://` without network resources.
 
+## Pre-Release Schema Policy
+
+This application is still under active development and does not yet promise compatibility with earlier development data. Change the current `.otreq` schema in place when needed; do not add migrations, bump versions solely for development compatibility, or preserve older development schemas unless explicitly requested. Existing development files and browser caches may be invalidated. When a change invalidates stored data, update validation and cache handling so stale data is rejected instead of silently loaded or converted. Keep `SCHEMA_VERSION`, TypeScript models, validators, generators, smoke fixtures, and checked-in examples aligned with the current format.
+
 ## Commit & Pull Request Guidelines
 
 Recent commits use short, imperative subjects such as `Fix large-project freezes...` and `Add TanStack Table...`. Keep each commit focused and avoid vague subjects. Pull requests should explain the user-visible effect, list validation performed, and link relevant issues. Include screenshots for UI changes and call out `.otreq` schema, migration, offline-build, or performance impacts explicitly.

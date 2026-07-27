@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useProjectStore } from '../store/projectStore'
 import { RichTextEditor, RichTextView } from '../components/RichText'
 import { ConfirmDialog, Modal } from '../components/Modal'
 import { DataTable } from '../components/DataTable'
+import { RequirementHoverLink } from '../components/RequirementHoverLink'
 import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { lookupLabel } from '../lib/defaults'
 import { formatDate } from '../lib/ids'
@@ -139,12 +139,17 @@ export function ActivitiesPage() {
           if (!row.original.linkedIds.length) return '—'
           return (
             <div className="flex flex-wrap gap-1">
-              {row.original.linkedIds.map((reqId, index) => {
-                const label = row.original.linkedLabels.split(', ')[index] || 'REQ'
+              {row.original.linkedIds.map((reqId) => {
+                const requirement = project.requirements.find((item) => item.id === reqId)
+                if (!requirement) {
+                  return (
+                    <span key={reqId} className="mono text-[var(--color-ink-muted)]">
+                      Missing
+                    </span>
+                  )
+                }
                 return (
-                  <Link key={reqId} className="mono text-[var(--color-accent)] hover:underline" to={`/requirements/${reqId}`}>
-                    {label}
-                  </Link>
+                  <RequirementHoverLink key={reqId} requirement={requirement} project={project} />
                 )
               })}
             </div>
@@ -181,7 +186,7 @@ export function ActivitiesPage() {
     }
 
     return defs
-  }, [editing])
+  }, [editing, project])
 
   return (
     <div className="space-y-2.5">

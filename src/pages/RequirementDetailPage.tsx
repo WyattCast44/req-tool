@@ -1,23 +1,56 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import type { ColumnDef } from '@tanstack/react-table'
 import { useProjectStore } from '../store/projectStore'
 import { RichTextEditor, RichTextView } from '../components/RichText'
 import { AssessmentBadge, ClassificationBadge, StatusBadge } from '../components/StatusBadge'
 import { ConfirmDialog, Modal } from '../components/Modal'
+import { DataTable } from '../components/DataTable'
+import { FuzzySelect } from '../components/FuzzySelect'
 import { lookupLabel } from '../lib/defaults'
 import { formatDateTime } from '../lib/ids'
+import { fuzzyIncludesFilter, plainTextFromHtml } from '../lib/tableFilters'
 import {
   RECIPROCAL_RELATIONSHIP,
   RELATIONSHIP_TYPES,
   type RelationshipType,
   type Requirement,
+  type RequirementRelationship,
   type Tag,
   type TagCategory,
 } from '../types/project'
 import { currentAssessment } from '../lib/filters'
+import {
+  RequirementSourceLinkModal,
+  type RequirementSourceLinkDraft,
+} from '../components/RequirementSourceLinkModal'
+import type { RequirementSourceLink } from '../types/project'
 
 type RequirementTab = 'overview' | 'traceability' | 'verification'
+
+interface RelationshipRow {
+  id: string
+  otherId: string
+  relatedSourceId: string
+  title: string
+  direction: string
+  type: string
+  status: string
+  rationale: string
+  relationship: RequirementRelationship
+}
+
+interface SourceLinkRow {
+  id: string
+  sourceId: string
+  sourceLabel: string
+  type: string
+  locator: string
+  rationale: string
+  notes: string
+  link: RequirementSourceLink
+}
 
 function emptyReq(projectDefaults: { statusId: string; classificationId: string }): Partial<Requirement> {
   return {
@@ -26,9 +59,6 @@ function emptyReq(projectDefaults: { statusId: string; classificationId: string 
     requirementText: '',
     statusId: projectDefaults.statusId,
     classificationId: projectDefaults.classificationId,
-    sourceDocument: '',
-    sourceDocumentVersion: '',
-    sourceSection: '',
     description: '',
     analystNotes: '',
     rationale: '',
@@ -52,6 +82,8 @@ export function RequirementDetailPage() {
   const deleteRequirement = useProjectStore((s) => s.deleteRequirement)
   const upsertRelationship = useProjectStore((s) => s.upsertRelationship)
   const deleteRelationship = useProjectStore((s) => s.deleteRelationship)
+  const upsertRequirementSourceLink = useProjectStore((s) => s.upsertRequirementSourceLink)
+  const deleteRequirementSourceLink = useProjectStore((s) => s.deleteRequirementSourceLink)
   const linkRequirementActivity = useProjectStore((s) => s.linkRequirementActivity)
   const unlinkRequirementActivity = useProjectStore((s) => s.unlinkRequirementActivity)
   const upsertEvidence = useProjectStore((s) => s.upsertEvidence)
@@ -81,6 +113,8 @@ export function RequirementDetailPage() {
   const [errors, setErrors] = useState<string[]>([])
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [relOpen, setRelOpen] = useState(false)
+  const [sourceLinkOpen, setSourceLinkOpen] = useState(false)
+  const [editingSourceLink, setEditingSourceLink] = useState<RequirementSourceLink | null>(null)
   const [activeTab, setActiveTab] = useState<RequirementTab>('overview')
   const [relDraft, setRelDraft] = useState({
     targetRequirementId: '',
@@ -103,6 +137,230 @@ export function RequirementDetailPage() {
     setActiveTab('overview')
   }, [id])
 
+  const reqId = existing?.id
+  const relationships = useMemo(
+    () =>
+      project.relationships.filter(
+        (r) => r.sourceRequirementId === reqId || r.targetRequirementId === reqId,
+      ),
+    [project.relationships, reqId],
+  )
+  const activityLinks = useMemo(
+    () => project.requirementActivityLinks.filter((l) => l.requirementId === reqId),
+    [project.requirementActivityLinks, reqId],
+  )
+  const sourceLinks = useMemo(
+    () => (project.requirementSourceLinks ?? []).filter((link) => link.requirementId === reqId),
+    [project.requirementSourceLinks, reqId],
+  )
+  const verifications = useMemo(
+    () => project.verifications.filter((v) => v.requirementId === reqId),
+    [project.verifications, reqId],
+  )
+  const assessments = useMemo(
+    () =>
+      project.assessments
+        .filter((a) => a.requirementId === reqId)
+        .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt)),
+    [project.assessments, reqId],
+  )
+  const current = reqId ? currentAssessment(project, reqId) : undefined
+
+  const relationshipRows = useMemo<RelationshipRow[]>(
+    () =>
+      relationships.map((rel) => {
+        const outgoing = rel.sourceRequirementId === reqId
+        const otherId = outgoing ? rel.targetRequirementId : rel.sourceRequirementId
+        const other = project.requirements.find((r) => r.id === otherId)
+        return {
+          id: rel.id,
+          otherId,
+          relatedSourceId: other?.sourceId || 'Missing',
+          title: other?.shortTitle || '',
+          direction: outgoing ? 'Outgoing' : 'Incoming',
+          type: outgoing ? rel.type : RECIPROCAL_RELATIONSHIP[rel.type] || rel.type,
+          status: lookupLabel(project.lookups.statuses, other?.statusId || ''),
+          rationale: rel.rationale || '',
+          relationship: rel,
+        }
+      }),
+    [project.lookups.statuses, project.requirements, relationships, reqId],
+  )
+
+  const relationshipColumns = useMemo<ColumnDef<RelationshipRow>[]>(() => {
+    const defs: ColumnDef<RelationshipRow>[] = [
+      {
+        accessorKey: 'relatedSourceId',
+        header: 'Related ID',
+        cell: ({ row }) => (
+          <Link className="text-[var(--color-accent)] hover:underline" to={`/requirements/${row.original.otherId}`}>
+            {row.original.relatedSourceId}
+          </Link>
+        ),
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.relatedSourceId, value),
+        size: 140,
+      },
+      {
+        accessorKey: 'title',
+        header: 'Title',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.title, value),
+        size: 200,
+      },
+      {
+        accessorKey: 'direction',
+        header: 'Direction',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.direction, value),
+        size: 110,
+      },
+      {
+        accessorKey: 'type',
+        header: 'Type',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.type, value),
+        size: 130,
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ getValue }) => <StatusBadge value={getValue<string>()} />,
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.status, value),
+        size: 120,
+      },
+      {
+        accessorKey: 'rationale',
+        header: 'Rationale',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.rationale, value),
+        size: 220,
+      },
+    ]
+
+    if (editing) {
+      defs.push({
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <button
+            type="button"
+            className="btn btn-ghost px-2 py-1 text-xs text-[var(--color-danger)]"
+            onClick={() => deleteRelationship(row.original.id)}
+          >
+            Remove
+          </button>
+        ),
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableHiding: false,
+        size: 100,
+      })
+    }
+
+    return defs
+  }, [deleteRelationship, editing])
+
+  const sourceLinkRows = useMemo<SourceLinkRow[]>(
+    () =>
+      sourceLinks.map((link) => {
+        const source = (project.sources ?? []).find((item) => item.id === link.sourceId)
+        return {
+          id: link.id,
+          sourceId: link.sourceId,
+          sourceLabel: source
+            ? `${source.identifier ? `${source.identifier} — ` : ''}${source.title}`
+            : 'Missing source',
+          type: link.type,
+          locator: link.locator || '',
+          rationale: link.rationale || '',
+          notes: link.notes || '',
+          link,
+        }
+      }),
+    [project.sources, sourceLinks],
+  )
+
+  const sourceLinkColumns = useMemo<ColumnDef<SourceLinkRow>[]>(() => {
+    const defs: ColumnDef<SourceLinkRow>[] = [
+      {
+        accessorKey: 'sourceLabel',
+        header: 'Source',
+        cell: ({ row }) => {
+          const source = (project.sources ?? []).find((item) => item.id === row.original.sourceId)
+          return (
+            <Link className="text-[var(--color-accent)] hover:underline" to={`/sources/${row.original.sourceId}`}>
+              {source?.identifier && <span className="mono">{source.identifier} — </span>}
+              {source?.title || 'Missing source'}
+            </Link>
+          )
+        },
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.sourceLabel, value),
+        size: 240,
+      },
+      {
+        accessorKey: 'type',
+        header: 'Relationship',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.type, value),
+        size: 130,
+      },
+      {
+        accessorKey: 'locator',
+        header: 'Locator',
+        cell: ({ getValue }) => getValue<string>() || '—',
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.locator, value),
+        size: 140,
+      },
+      {
+        accessorKey: 'rationale',
+        header: 'Rationale',
+        cell: ({ getValue }) => <RichTextView html={getValue<string>()} />,
+        filterFn: (row, _id, value) =>
+          fuzzyIncludesFilter(plainTextFromHtml(row.original.rationale), value),
+        size: 200,
+      },
+      {
+        accessorKey: 'notes',
+        header: 'Notes',
+        cell: ({ getValue }) => <RichTextView html={getValue<string>()} />,
+        filterFn: (row, _id, value) =>
+          fuzzyIncludesFilter(plainTextFromHtml(row.original.notes), value),
+        size: 180,
+      },
+    ]
+
+    if (editing) {
+      defs.push({
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex gap-1">
+            <button
+              type="button"
+              className="btn btn-ghost px-1.5 py-0.5 text-xs"
+              onClick={() => {
+                setEditingSourceLink(row.original.link)
+                setSourceLinkOpen(true)
+              }}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost px-1.5 py-0.5 text-xs text-[var(--color-danger)]"
+              onClick={() => deleteRequirementSourceLink(row.original.id)}
+            >
+              Unlink
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableHiding: false,
+        size: 130,
+      })
+    }
+
+    return defs
+  }, [deleteRequirementSourceLink, editing, project.sources])
+
   if (!isNew && !existing) {
     return (
       <div className="panel p-6">
@@ -113,17 +371,6 @@ export function RequirementDetailPage() {
       </div>
     )
   }
-
-  const reqId = existing?.id
-  const relationships = project.relationships.filter(
-    (r) => r.sourceRequirementId === reqId || r.targetRequirementId === reqId,
-  )
-  const activityLinks = project.requirementActivityLinks.filter((l) => l.requirementId === reqId)
-  const verifications = project.verifications.filter((v) => v.requirementId === reqId)
-  const assessments = project.assessments
-    .filter((a) => a.requirementId === reqId)
-    .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
-  const current = reqId ? currentAssessment(project, reqId) : undefined
 
   const save = () => {
     const result = upsertRequirement(
@@ -231,7 +478,7 @@ export function RequirementDetailPage() {
             id="traceability"
             label="Traceability"
             description="Relationships and test activities"
-            count={relationships.length + activityLinks.length}
+            count={relationships.length + sourceLinks.length + activityLinks.length}
             activeTab={activeTab}
             onSelect={setActiveTab}
           />
@@ -376,55 +623,6 @@ export function RequirementDetailPage() {
                     ))}
                   </select>
                 </Field>
-              </div>
-            ) : (
-              <dl className="summary-list">
-                <SummaryValue label="Status">
-                  <StatusBadge value={lookupLabel(project.lookups.statuses, form.statusId || '')} />
-                </SummaryValue>
-                <SummaryValue label="Assessment">
-                  {current ? (
-                    <AssessmentBadge value={lookupLabel(project.lookups.assessmentResults, current.resultId)} />
-                  ) : (
-                    'Not assessed'
-                  )}
-                </SummaryValue>
-                <SummaryValue label="Type" value={lookupLabel(project.lookups.types, form.typeId || '')} />
-                <SummaryValue label="Priority" value={lookupLabel(project.lookups.priorities, form.priorityId || '')} />
-                <SummaryValue label="Classification">
-                  <ClassificationBadge value={lookupLabel(project.lookups.classifications, form.classificationId || '')} />
-                </SummaryValue>
-                <SummaryValue label="Derived" value={form.isDerived ? 'Yes' : 'No'} />
-              </dl>
-            )}
-          </Section>
-
-          <Section id="source-provenance" title="Source & provenance">
-            {editing ? (
-              <div className="space-y-2.5">
-                <Field label="Source document">
-                  <input
-                    className="field-input"
-                    value={form.sourceDocument || ''}
-                    onChange={(e) => patch('sourceDocument', e.target.value)}
-                  />
-                </Field>
-                <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
-                  <Field label="Document version">
-                    <input
-                      className="field-input"
-                      value={form.sourceDocumentVersion || ''}
-                      onChange={(e) => patch('sourceDocumentVersion', e.target.value)}
-                    />
-                  </Field>
-                  <Field label="Section / paragraph">
-                    <input
-                      className="field-input"
-                      value={form.sourceSection || ''}
-                      onChange={(e) => patch('sourceSection', e.target.value)}
-                    />
-                  </Field>
-                </div>
                 <Field label="Derived requirement">
                   <label className="flex items-center gap-2 text-sm">
                     <input
@@ -447,9 +645,22 @@ export function RequirementDetailPage() {
             ) : (
               <div className="space-y-3">
                 <dl className="summary-list">
-                  <SummaryValue label="Document" value={form.sourceDocument || 'Not specified'} />
-                  <SummaryValue label="Version" value={form.sourceDocumentVersion || '—'} />
-                  <SummaryValue label="Section" value={form.sourceSection || '—'} />
+                  <SummaryValue label="Status">
+                    <StatusBadge value={lookupLabel(project.lookups.statuses, form.statusId || '')} />
+                  </SummaryValue>
+                  <SummaryValue label="Assessment">
+                    {current ? (
+                      <AssessmentBadge value={lookupLabel(project.lookups.assessmentResults, current.resultId)} />
+                    ) : (
+                      'Not assessed'
+                    )}
+                  </SummaryValue>
+                  <SummaryValue label="Type" value={lookupLabel(project.lookups.types, form.typeId || '')} />
+                  <SummaryValue label="Priority" value={lookupLabel(project.lookups.priorities, form.priorityId || '')} />
+                  <SummaryValue label="Classification">
+                    <ClassificationBadge value={lookupLabel(project.lookups.classifications, form.classificationId || '')} />
+                  </SummaryValue>
+                  <SummaryValue label="Derived" value={form.isDerived ? 'Yes' : 'No'} />
                 </dl>
                 <TagSummary
                   categories={project.tagCategories}
@@ -498,6 +709,7 @@ export function RequirementDetailPage() {
             description="Understand how this requirement connects to other requirements and planned test coverage."
             metrics={[
               { label: 'Relationships', count: relationships.length },
+              { label: 'Sources', count: sourceLinks.length },
               { label: 'Test activities', count: activityLinks.length },
             ]}
           />
@@ -513,60 +725,58 @@ export function RequirementDetailPage() {
               ) : null
             }
           >
-            {relationships.length === 0 ? (
+            {relationshipRows.length === 0 ? (
               <p className="text-sm text-[var(--color-ink-muted)]">No relationships.</p>
             ) : (
-              <div className="table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Related ID</th>
-                      <th>Title</th>
-                      <th>Direction</th>
-                      <th>Type</th>
-                      <th>Status</th>
-                      <th>Rationale</th>
-                      {editing && <th />}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {relationships.map((rel) => {
-                      const outgoing = rel.sourceRequirementId === reqId
-                      const otherId = outgoing ? rel.targetRequirementId : rel.sourceRequirementId
-                      const other = project.requirements.find((r) => r.id === otherId)
-                      const displayType =
-                        outgoing ? rel.type : RECIPROCAL_RELATIONSHIP[rel.type] || rel.type
-                      return (
-                        <tr key={rel.id}>
-                          <td>
-                            <Link className="text-[var(--color-accent)] hover:underline" to={`/requirements/${otherId}`}>
-                              {other?.sourceId || 'Missing'}
-                            </Link>
-                          </td>
-                          <td>{other?.shortTitle || '—'}</td>
-                          <td>{outgoing ? 'Outgoing' : 'Incoming'}</td>
-                          <td>{displayType}</td>
-                          <td>
-                            <StatusBadge value={lookupLabel(project.lookups.statuses, other?.statusId || '')} />
-                          </td>
-                          <td>{rel.rationale || '—'}</td>
-                          {editing && (
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-ghost px-2 py-1 text-xs text-[var(--color-danger)]"
-                                onClick={() => deleteRelationship(rel.id)}
-                              >
-                                Remove
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                data={relationshipRows}
+                columns={relationshipColumns}
+                getRowId={(row) => row.id}
+                pageSize={25}
+                maxHeightClassName="max-h-[50vh]"
+                sizingStorageKey="requirement-relationships"
+                emptyMessage="No relationships match the current column filters."
+              />
+            )}
+          </Section>
+
+          <Section
+            id="sources"
+            title="Sources"
+            description="Documents, standards, policies, interviews, and other origins connected to this requirement."
+            action={
+              editing ? (
+                (project.sources ?? []).length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setEditingSourceLink(null)
+                      setSourceLinkOpen(true)
+                    }}
+                  >
+                    Link Source
+                  </button>
+                ) : (
+                  <Link className="btn btn-secondary" to="/sources/new">
+                    Create Source
+                  </Link>
+                )
+              ) : null
+            }
+          >
+            {sourceLinkRows.length === 0 ? (
+              <p className="text-sm text-[var(--color-ink-muted)]">No linked sources.</p>
+            ) : (
+              <DataTable
+                data={sourceLinkRows}
+                columns={sourceLinkColumns}
+                getRowId={(row) => row.id}
+                pageSize={25}
+                maxHeightClassName="max-h-[50vh]"
+                sizingStorageKey="requirement-sources"
+                emptyMessage="No linked sources match the current column filters."
+              />
             )}
           </Section>
 
@@ -981,20 +1191,21 @@ export function RequirementDetailPage() {
       >
         <div className="space-y-3">
           <Field label="Related requirement">
-            <select
-              className="field-input"
-              value={relDraft.targetRequirementId}
-              onChange={(e) => setRelDraft((d) => ({ ...d, targetRequirementId: e.target.value }))}
-            >
-              <option value="">Select…</option>
-              {project.requirements
+            <FuzzySelect
+              options={project.requirements
                 .filter((r) => r.id !== reqId)
-                .map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.sourceId} — {r.shortTitle || 'Untitled'}
-                  </option>
-                ))}
-            </select>
+                .map((r) => ({
+                  id: r.id,
+                  label: `${r.sourceId} — ${r.shortTitle || 'Untitled'}`,
+                }))}
+              value={relDraft.targetRequirementId}
+              onChange={(targetRequirementId) =>
+                setRelDraft((d) => ({ ...d, targetRequirementId }))
+              }
+              placeholder="Search requirements…"
+              emptyLabel="Select…"
+              allowClear
+            />
           </Field>
           <Field label="Relationship type">
             <select
@@ -1027,6 +1238,44 @@ export function RequirementDetailPage() {
           </Field>
         </div>
       </Modal>
+
+      <RequirementSourceLinkModal
+        open={sourceLinkOpen}
+        title={editingSourceLink ? 'Edit Source Relationship' : 'Link Source'}
+        selectionLabel="Source"
+        options={(project.sources ?? []).map((source) => ({
+          id: source.id,
+          label: `${source.identifier ? `${source.identifier} — ` : ''}${source.title}`,
+        }))}
+        initialLink={editingSourceLink}
+        initialSelectedId={editingSourceLink?.sourceId}
+        onClose={() => {
+          setSourceLinkOpen(false)
+          setEditingSourceLink(null)
+        }}
+        onSave={(draft: RequirementSourceLinkDraft) => {
+          if (!reqId) return
+          const result = upsertRequirementSourceLink(
+            {
+              id: draft.id,
+              requirementId: reqId,
+              sourceId: draft.selectedId,
+              type: draft.type,
+              locator: draft.locator,
+              rationale: draft.rationale,
+              notes: draft.notes,
+            },
+            editorName || project.metadata.editorNameDefault,
+          )
+          if (!result.ok) {
+            setToast(result.error || 'Could not save source relationship.')
+            return
+          }
+          setToast(result.warning || 'Source relationship saved.')
+          setSourceLinkOpen(false)
+          setEditingSourceLink(null)
+        }}
+      />
 
       <ConfirmDialog
         open={confirmDelete}
@@ -1310,14 +1559,19 @@ function ActivityLinker({
   const [notes, setNotes] = useState('')
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <select className="field-input w-auto" value={activityId} onChange={(e) => setActivityId(e.target.value)}>
-        <option value="">Link activity…</option>
-        {activities.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.title}
-          </option>
-        ))}
-      </select>
+      <div className="min-w-[14rem] flex-1">
+        <FuzzySelect
+          options={activities.map((activity) => ({
+            id: activity.id,
+            label: activity.title,
+          }))}
+          value={activityId}
+          onChange={setActivityId}
+          placeholder="Search activities…"
+          emptyLabel="Link activity…"
+          allowClear
+        />
+      </div>
       <input
         className="field-input w-48"
         placeholder="Requirement-specific notes"

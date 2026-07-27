@@ -5,7 +5,7 @@ import { createRequire } from 'node:module'
 // Mirrors critical createEmptyProject / sample fields without importing the TS modules.
 
 const formatId = 'otreq-project'
-const schemaVersion = 1
+const schemaVersion = 2
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg)
@@ -52,9 +52,6 @@ const sample = {
       requirementText: '<p>Shall do the thing.</p>',
       statusId: 's1',
       classificationId: 'c1',
-      sourceDocument: 'SRD',
-      sourceDocumentVersion: '1',
-      sourceSection: '1.1',
       description: '',
       analystNotes: '',
       rationale: '',
@@ -71,6 +68,38 @@ const sample = {
     },
   ],
   relationships: [],
+  sources: [
+    {
+      id: '33333333-3333-4333-8333-333333333333',
+      identifier: 'SRD',
+      title: 'Smoke System Requirements Document',
+      sourceType: 'Requirements document',
+      version: '1',
+      publisher: '',
+      publicationDate: '',
+      url: '',
+      filePath: '',
+      description: '',
+      notes: '',
+      createdAt: new Date().toISOString(),
+      modifiedAt: new Date().toISOString(),
+      editorName: 'Smoke',
+    },
+  ],
+  requirementSourceLinks: [
+    {
+      id: '44444444-4444-4444-8444-444444444444',
+      requirementId: '22222222-2222-4222-8222-222222222222',
+      sourceId: '33333333-3333-4333-8333-333333333333',
+      type: 'Cites',
+      locator: '1.1',
+      rationale: '',
+      notes: '',
+      createdAt: new Date().toISOString(),
+      modifiedAt: new Date().toISOString(),
+      editorName: 'Smoke',
+    },
+  ],
   testActivities: [],
   requirementActivityLinks: [],
   evidence: [],
@@ -83,11 +112,34 @@ assert(sample.formatId === formatId, 'format id')
 assert(sample.schemaVersion === schemaVersion, 'schema')
 assert(sample.requirements[0].sourceId, 'source id required')
 assert(sample.requirements[0].requirementText, 'text required')
+assert(sample.sources[0].title, 'source title required')
+assert(sample.requirementSourceLinks[0].sourceId === sample.sources[0].id, 'source link')
 
 const out = new URL('../dist/smoke-sample.otreq', import.meta.url)
 writeFileSync(out, JSON.stringify(sample, null, 2))
 const roundTrip = JSON.parse(readFileSync(out, 'utf8'))
 assert(roundTrip.metadata.name === 'Smoke Project', 'round trip')
+
+for (const filename of [
+  'EaglesNest_Requirements_v001_2026-07-26.otreq',
+  'EaglesNest_Requirements_STRESS_v001_2026-07-26.otreq',
+]) {
+  const example = JSON.parse(
+    readFileSync(new URL(`../examples/${filename}`, import.meta.url), 'utf8'),
+  )
+  assert(example.schemaVersion === schemaVersion, `${filename} current schema`)
+  assert(Array.isArray(example.sources), `${filename} sources`)
+  assert(Array.isArray(example.requirementSourceLinks), `${filename} source links`)
+  assert(
+    example.requirements.every(
+      (requirement) =>
+        !Object.hasOwn(requirement, 'sourceDocument') &&
+        !Object.hasOwn(requirement, 'sourceDocumentVersion') &&
+        !Object.hasOwn(requirement, 'sourceSection'),
+    ),
+    `${filename} has no legacy provenance fields`,
+  )
+}
 
 const html = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8')
 assert(html.includes('<div id="root"></div>'), 'root mount present')

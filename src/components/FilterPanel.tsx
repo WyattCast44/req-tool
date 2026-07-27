@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { FuzzyMultiSelect } from './FuzzyMultiSelect'
 import { useProjectStore } from '../store/projectStore'
 import type { ProjectData, RequirementFilters, TagLogic } from '../types/project'
 import { lookupLabel } from '../lib/defaults'
@@ -22,20 +23,12 @@ function MultiSelect({
           <span className="ml-1 text-[var(--color-accent)]">({values.length})</span>
         ) : null}
       </span>
-      <select
-        multiple
-        className="field-input min-h-[4.25rem] text-[0.75rem]"
+      <FuzzyMultiSelect
+        options={options}
         value={values}
-        onChange={(e) =>
-          onChange(Array.from(e.target.selectedOptions).map((o) => o.value))
-        }
-      >
-        {options.map((opt) => (
-          <option key={opt.id} value={opt.id}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        onChange={onChange}
+        placeholder={`Search ${label.toLowerCase()}…`}
+      />
     </label>
   )
 }
@@ -100,7 +93,14 @@ function buildActiveChips(
     lookupIds(project, 'testPhases', ids),
   )
   pushMulti('owners', 'Owner', filters.owners, (ids) => ids.join(', '))
-  pushMulti('sourceDocuments', 'Source doc', filters.sourceDocuments, (ids) => ids.join(', '))
+  pushMulti('sourceIds', 'Source', filters.sourceIds, (ids) =>
+    ids
+      .map((id) => {
+        const source = (project.sources ?? []).find((item) => item.id === id)
+        return source?.identifier || source?.title || id
+      })
+      .join(', '),
+  )
   pushMulti('tagIds', 'Tags', filters.tagIds, (ids) =>
     ids.map((id) => project.tags.find((t) => t.id === id)?.name || id).join(', '),
   )
@@ -171,9 +171,12 @@ export function FilterPanel() {
   const owners = Array.from(
     new Set(project.testActivities.map((t) => t.owner).filter(Boolean)),
   ).sort()
-  const sourceDocuments = Array.from(
-    new Set(project.requirements.map((r) => r.sourceDocument).filter(Boolean)),
-  ).sort()
+  const sources = (project.sources ?? [])
+    .map((source) => ({
+      id: source.id,
+      label: `${source.identifier ? `${source.identifier} — ` : ''}${source.title}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label))
 
   const activeChips = useMemo(
     () => buildActiveChips(project, filters, tagLogic, setFilters, setTagLogic),
@@ -312,10 +315,10 @@ export function FilterPanel() {
             onChange={(ownersVals) => setFilters({ owners: ownersVals })}
           />
           <MultiSelect
-            label="Source document"
-            options={sourceDocuments.map((o) => ({ id: o, label: o }))}
-            values={filters.sourceDocuments}
-            onChange={(sourceDocumentsVals) => setFilters({ sourceDocuments: sourceDocumentsVals })}
+            label="Source"
+            options={sources}
+            values={filters.sourceIds}
+            onChange={(sourceIds) => setFilters({ sourceIds })}
           />
           <MultiSelect
             label="Tags"

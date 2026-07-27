@@ -46,6 +46,17 @@ export function requirementSearchText(project: ProjectData, req: Requirement, in
       return e ? `${e.title} ${e.fileName} ${e.filePath} ${e.notes}` : ''
     })
     .join(' ')
+  const sourceText = (indexes?.sourceLinksByReq.get(req.id) ||
+    (project.requirementSourceLinks ?? []).filter((link) => link.requirementId === req.id))
+    .map((link) => {
+      const source = indexes
+        ? indexes.sourceById.get(link.sourceId)
+        : (project.sources ?? []).find((item) => item.id === link.sourceId)
+      return source
+        ? `${source.identifier} ${source.title} ${source.sourceType} ${source.version} ${source.publisher} ${link.type} ${link.locator} ${cheapPlainText(link.rationale)} ${cheapPlainText(link.notes)}`
+        : ''
+    })
+    .join(' ')
   return [
     req.sourceId,
     req.shortTitle,
@@ -53,8 +64,9 @@ export function requirementSearchText(project: ProjectData, req: Requirement, in
     cheapPlainText(req.description),
     cheapPlainText(req.analystNotes),
     cheapPlainText(req.rationale),
-    req.sourceDocument,
-    req.sourceSection,
+    req.editorName,
+    req.changeSummary,
+    sourceText,
     evidenceText,
   ]
     .join(' ')
@@ -99,9 +111,10 @@ export function matchesFilters(
     return false
   if (filters.typeIds.length && !filters.typeIds.includes(req.typeId)) return false
   if (filters.priorityIds.length && !filters.priorityIds.includes(req.priorityId)) return false
-  if (filters.sourceDocuments.length && !filters.sourceDocuments.includes(req.sourceDocument))
-    return false
-
+  if (filters.sourceIds.length) {
+    const linkedSourceIds = (idx.sourceLinksByReq.get(req.id) || []).map((link) => link.sourceId)
+    if (!filters.sourceIds.some((id) => linkedSourceIds.includes(id))) return false
+  }
   if (filters.verificationMethodIds.length) {
     const methods = (idx.verificationsByReq.get(req.id) || []).map((v) => v.methodId)
     if (!filters.verificationMethodIds.some((id) => methods.includes(id))) return false

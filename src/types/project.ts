@@ -1,5 +1,5 @@
 export const APP_VERSION = '1.0.0'
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 export const FILE_FORMAT_ID = 'otreq-project'
 export const FILE_EXTENSION = '.otreq'
 
@@ -14,6 +14,17 @@ export const RELATIONSHIP_TYPES = [
 ] as const
 
 export type RelationshipType = (typeof RELATIONSHIP_TYPES)[number]
+
+export const SOURCE_RELATIONSHIP_TYPES = [
+  'Cites',
+  'Derived from',
+  'Implements',
+  'Supports',
+  'Constrained by',
+  'Conflicts with',
+] as const
+
+export type SourceRelationshipType = (typeof SOURCE_RELATIONSHIP_TYPES)[number]
 
 export const RECIPROCAL_RELATIONSHIP: Partial<Record<RelationshipType, RelationshipType>> = {
   'Parent of': 'Child of',
@@ -114,6 +125,36 @@ export interface RequirementRelationship {
   editorName: string
 }
 
+export interface Source {
+  id: string
+  identifier: string
+  title: string
+  sourceType: string
+  version: string
+  publisher: string
+  publicationDate: string
+  url: string
+  filePath: string
+  description: string
+  notes: string
+  createdAt: string
+  modifiedAt: string
+  editorName: string
+}
+
+export interface RequirementSourceLink {
+  id: string
+  requirementId: string
+  sourceId: string
+  type: SourceRelationshipType
+  locator: string
+  rationale: string
+  notes: string
+  createdAt: string
+  modifiedAt: string
+  editorName: string
+}
+
 export interface Requirement {
   id: string
   sourceId: string
@@ -121,9 +162,6 @@ export interface Requirement {
   requirementText: string
   statusId: string
   classificationId: string
-  sourceDocument: string
-  sourceDocumentVersion: string
-  sourceSection: string
   description: string
   analystNotes: string
   rationale: string
@@ -182,7 +220,7 @@ export interface RequirementFilters {
   testActivityIds: string[]
   testPhaseIds: string[]
   owners: string[]
-  sourceDocuments: string[]
+  sourceIds: string[]
   tagIds: string[]
   createdFrom: string
   createdTo: string
@@ -235,6 +273,8 @@ export interface ProjectData {
   tags: Tag[]
   requirements: Requirement[]
   relationships: RequirementRelationship[]
+  sources: Source[]
+  requirementSourceLinks: RequirementSourceLink[]
   testActivities: TestActivity[]
   requirementActivityLinks: RequirementActivityLink[]
   evidence: EvidenceReference[]
@@ -263,7 +303,7 @@ export function emptyFilters(): RequirementFilters {
     testActivityIds: [],
     testPhaseIds: [],
     owners: [],
-    sourceDocuments: [],
+    sourceIds: [],
     tagIds: [],
     createdFrom: '',
     createdTo: '',
@@ -293,6 +333,6 @@ export type ColumnId =
   | 'assessment'
   | 'verification'
   | 'tags'
-  | 'sourceDocument'
+  | 'sources'
   | 'modifiedAt'
   | 'editorName'

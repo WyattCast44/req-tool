@@ -15,27 +15,14 @@ describe('parseAndValidateProject', () => {
     expect(result.project?.requirements[0].sourceId).toBe('REQ-1')
   })
 
-  it('migrates an older sparse project shape', () => {
+  it('rejects files from an older schema version', () => {
     const project = createTestProject()
-    const sparse = structuredClone(project) as unknown as Record<string, unknown>
-    sparse.schemaVersion = 0
-    delete sparse.savedViews
-    delete sparse.assessments
-    delete sparse.verifications
+    project.schemaVersion = SCHEMA_VERSION - 1
 
-    const result = parseAndValidateProject(JSON.stringify(sparse))
+    const result = parseAndValidateProject(JSON.stringify(project))
 
-    expect(result.ok).toBe(true)
-    expect(result.project?.schemaVersion).toBe(SCHEMA_VERSION)
-    expect(result.project?.savedViews).toEqual([])
-    expect(result.project?.assessments).toEqual([])
-    expect(result.project?.verifications).toEqual([])
-    expect(result.issues).toContainEqual(
-      expect.objectContaining({
-        level: 'warning',
-        message: `Migrated project from schema v0 to v${SCHEMA_VERSION}.`,
-      }),
-    )
+    expect(result.ok).toBe(false)
+    expect(result.issues[0].message).toContain('Unsupported schema version')
   })
 
   it('rejects files from a newer schema version', () => {
@@ -45,7 +32,7 @@ describe('parseAndValidateProject', () => {
     const result = parseAndValidateProject(JSON.stringify(project))
 
     expect(result.ok).toBe(false)
-    expect(result.issues[0].message).toContain('Unsupported future schema version')
+    expect(result.issues[0].message).toContain('Unsupported schema version')
   })
 
   it('rejects requirements missing required domain fields', () => {
@@ -84,6 +71,36 @@ describe('parseAndValidateProject', () => {
         'Requirement REQ-1 references missing tag missing-tag.',
         'Requirement REQ-1 references missing evidence missing-evidence.',
       ]),
+    )
+  })
+
+  it('loads dangling source links with an actionable warning', () => {
+    const project = createTestProject()
+    const requirement = createTestRequirement(project, 'req-1')
+    project.requirements = [requirement]
+    project.requirementSourceLinks = [
+      {
+        id: 'source-link-1',
+        requirementId: requirement.id,
+        sourceId: 'missing-source',
+        type: 'Cites',
+        locator: '',
+        rationale: '',
+        notes: '',
+        createdAt: requirement.createdAt,
+        modifiedAt: requirement.modifiedAt,
+        editorName: 'Test Analyst',
+      },
+    ]
+
+    const result = parseAndValidateProject(JSON.stringify(project))
+
+    expect(result.ok).toBe(true)
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        level: 'warning',
+        message: 'Broken requirement–source link source-link-1.',
+      }),
     )
   })
 })

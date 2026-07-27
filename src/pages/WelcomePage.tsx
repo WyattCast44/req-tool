@@ -51,6 +51,33 @@ export function WelcomePage() {
         </p>
       </header>
 
+      {!project && loadIssues.length > 0 && (
+        <div className="panel border-[var(--color-warn)] bg-[var(--color-warn-bg)] px-5 py-4">
+          <h2 className="font-semibold text-[var(--color-warn)]">Cached workspace not loaded</h2>
+          <p className="mt-1 text-sm">
+            Browser working storage contains data from an incompatible development schema
+            {localSavedAt ? ` saved ${formatDateTime(localSavedAt)}` : ''}. Open a current project
+            file, create a new project, or ignore the cached workspace.
+          </p>
+          <ul className="mt-3 list-disc pl-5 text-sm">
+            {loadIssues.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="btn btn-secondary mt-3"
+            onClick={() => {
+              void discardLocalAndClear().then(() => {
+                setMessages(['Cached workspace ignored.'])
+              })
+            }}
+          >
+            Ignore Cached Workspace
+          </button>
+        </div>
+      )}
+
       {project && (recoveryAvailable || hasUnexportedChanges || loadIssues.length > 0) && (
         <div className="panel border-[var(--color-warn)] bg-[var(--color-warn-bg)] px-5 py-4">
           <h2 className="font-semibold text-[var(--color-warn)]">Local recovery data available</h2>

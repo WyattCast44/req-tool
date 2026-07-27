@@ -48,8 +48,8 @@ examples/EaglesNest_Requirements_v001_2026-07-26.otreq
 examples/EaglesNest_Requirements_STRESS_v001_2026-07-26.otreq
 ```
 
-- **Small demo** (`v001`): 12 requirements with relationships, activities, assessments, tags, and intentional dashboard gaps.
-- **Stress dataset** (`STRESS_v001`): ~900 requirements, ~770 relationships, 48 activities, and hundreds of verifications/assessments for UX performance testing.
+- **Small demo** (`v001`): 12 requirements with sources, relationships, activities, assessments, tags, and intentional dashboard gaps.
+- **Stress dataset** (`STRESS_v001`): ~900 requirements, linked sources, ~770 requirement relationships, 48 activities, and hundreds of verifications/assessments for UX performance testing.
 
 Regenerate with:
 
@@ -75,7 +75,8 @@ npm run preview
 - Review Mode (default) and explicit Edit Mode
 - Project dashboard with status, verification, gaps, and recent changes
 - Requirements table with search, filters, tags, saved views, pagination
-- Requirement detail with relationships, activities, verification, evidence paths, assessments
+- Reusable source records with rich notes and typed, pinpoint requirement relationships
+- Requirement detail with source traceability, requirement relationships, activities, verification, evidence paths, assessments
 - Traceability matrix and focused relationship graph
 - Test activity records
 - Lookup/tag management

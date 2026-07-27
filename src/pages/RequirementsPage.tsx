@@ -25,7 +25,7 @@ interface RequirementRow {
   assessment: string
   verification: string
   tags: string
-  sourceDocument: string
+  sources: string
   modifiedAt: string
   modifiedAtRaw: string
   editorName: string
@@ -42,7 +42,7 @@ const COLUMN_LABELS: Record<ColumnId, string> = {
   assessment: 'Assessment',
   verification: 'Verification',
   tags: 'Tags',
-  sourceDocument: 'Source Doc',
+  sources: 'Sources',
   modifiedAt: 'Modified',
   editorName: 'Editor',
 }
@@ -61,6 +61,13 @@ function toRows(project: ProjectData, requirements: Requirement[]): RequirementR
       .map((id) => project.tags.find((t) => t.id === id)?.name)
       .filter(Boolean)
       .join(', ')
+    const linkedSources = (indexes.sourceLinksByReq.get(req.id) || [])
+      .map((link) => {
+        const source = indexes.sourceById.get(link.sourceId)
+        return source?.identifier || source?.title
+      })
+      .filter(Boolean)
+      .join(', ')
     return {
       id: req.id,
       sourceId: req.sourceId,
@@ -72,7 +79,7 @@ function toRows(project: ProjectData, requirements: Requirement[]): RequirementR
       assessment: assessmentLabel,
       verification: methods,
       tags,
-      sourceDocument: req.sourceDocument || '',
+      sources: linkedSources,
       modifiedAt: formatDateTime(req.modifiedAt),
       modifiedAtRaw: req.modifiedAt,
       editorName: req.editorName || '',
@@ -233,10 +240,10 @@ export function RequirementsPage() {
         size: 150,
       },
       {
-        accessorKey: 'sourceDocument',
-        header: 'Source Doc',
+        accessorKey: 'sources',
+        header: 'Sources',
         cell: ({ getValue }) => getValue<string>() || '—',
-        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.sourceDocument, value),
+        filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.sources, value),
         size: 100,
       },
       {

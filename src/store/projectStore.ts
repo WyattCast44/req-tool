@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import {
   DEFAULT_COLUMNS,
+  SCHEMA_VERSION,
   emptyFilters,
   type AssessmentRecord,
   type ColumnId,
@@ -14,7 +15,10 @@ import {
   type RequirementActivityLink,
   type RequirementFilters,
   type RequirementRelationship,
+  type RequirementSourceLink,
   type SavedView,
+  type Source,
+  type SourceRelationshipType,
   type SortSpec,
   type Tag,
   type TagCategory,
@@ -26,7 +30,11 @@ import { createEmptyProject } from '../lib/defaults'
 import { createSampleProject } from '../lib/sampleProject'
 import { clearActivePointer, deleteWorkspace, getActiveWorkspace, saveWorkspace } from '../lib/idb'
 import { downloadTextFile, exportFilename, prepareExportProject } from '../lib/export'
-import { findDuplicateRelationship, parseAndValidateProject, validateRequirementDraft } from '../lib/validate'
+import {
+  findDuplicateRelationship,
+  parseAndValidateProject,
+  validateRequirementDraft,
+} from '../lib/validate'
 import { newId, nowIso } from '../lib/ids'
 import { ensureLinkSafety } from '../lib/sanitize'
 import type { RelationshipType } from '../types/project'
@@ -42,6 +50,7 @@ interface UiState {
   pageSize: number
   activeSavedViewId: string | null
   graphFocusId: string | null
+  graphFocusKind: 'requirement' | 'source'
   graphDepth: number
   graphTypes: RelationshipType[]
   matrixTypes: RelationshipType[]
@@ -98,6 +107,19 @@ interface ProjectStore extends UiState {
   ) => { ok: boolean; warning?: string; error?: string; id?: string }
   deleteRelationship: (id: string) => void
 
+  upsertSource: (input: Partial<Source> & { title: string; id?: string }, editorName: string) => { ok: boolean; error?: string; id?: string }
+  deleteSource: (id: string) => void
+  upsertRequirementSourceLink: (
+    input: Partial<RequirementSourceLink> & {
+      requirementId: string
+      sourceId: string
+      type: SourceRelationshipType
+      id?: string
+    },
+    editorName: string,
+  ) => { ok: boolean; error?: string; warning?: string; id?: string }
+  deleteRequirementSourceLink: (id: string) => void
+
   upsertTestActivity: (input: Partial<TestActivity> & { title: string; id?: string }, editorName: string) => string
   deleteTestActivity: (id: string) => void
   linkRequirementActivity: (requirementId: string, testActivityId: string, notes: string) => void
@@ -124,6 +146,7 @@ interface ProjectStore extends UiState {
   deleteSavedView: (id: string) => void
 
   setGraphFocus: (id: string | null) => void
+  setGraphSourceFocus: (id: string | null) => void
   setGraphDepth: (depth: number) => void
   setGraphTypes: (types: RelationshipType[]) => void
   setMatrixTypes: (types: RelationshipType[]) => void
@@ -213,6 +236,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   pageSize: 100,
   activeSavedViewId: null,
   graphFocusId: null,
+  graphFocusKind: 'requirement',
   graphDepth: 1,
   graphTypes: [
     'Parent of',
@@ -247,6 +271,21 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   hydrate: async () => {
     const existing = await getActiveWorkspace()
     if (existing) {
+      if (existing.project.schemaVersion !== SCHEMA_VERSION) {
+        set({
+          project: null,
+          mode: 'review',
+          hasUnexportedChanges: false,
+          localSavedAt: existing.localSavedAt,
+          sourceFileName: existing.sourceFileName,
+          recoveryAvailable: false,
+          hydrated: true,
+          loadIssues: [
+            `Cached workspace uses unsupported schema version ${existing.project.schemaVersion}. Expected v${SCHEMA_VERSION}. The cached data was not loaded or deleted.`,
+          ],
+        })
+        return
+      }
       set({
         project: existing.project,
         mode: 'review',
@@ -281,6 +320,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       page: 1,
       selectedRequirementIds: [],
       graphFocusId: project.requirements[0]?.id ?? null,
+      graphFocusKind: 'requirement',
     })
     await persist(get)
   },
@@ -309,6 +349,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         page: 1,
         selectedRequirementIds: [],
         graphFocusId: result.project.requirements[0]?.id ?? null,
+        graphFocusKind: 'requirement',
       })
       // Defer IndexedDB write so the dashboard can paint first on large projects.
       setTimeout(() => {
@@ -452,9 +493,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         requirementText: input.requirementText,
         statusId: input.statusId,
         classificationId: input.classificationId,
-        sourceDocument: input.sourceDocument || '',
-        sourceDocumentVersion: input.sourceDocumentVersion || '',
-        sourceSection: input.sourceSection || '',
         description: input.description || '',
         analystNotes: input.analystNotes || '',
         rationale: input.rationale || '',
@@ -537,6 +575,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       relationships: project.relationships.filter(
         (r) => r.sourceRequirementId !== id && r.targetRequirementId !== id,
       ),
+      requirementSourceLinks: (project.requirementSourceLinks ?? []).filter((link) => link.requirementId !== id),
       requirementActivityLinks: project.requirementActivityLinks.filter((l) => l.requirementId !== id),
       verifications: project.verifications.filter((v) => v.requirementId !== id),
       assessments: project.assessments.filter((a) => a.requirementId !== id),
@@ -613,6 +652,162 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       project: touchProject({
         ...project,
         relationships: project.relationships.filter((r) => r.id !== id),
+      }),
+      hasUnexportedChanges: true,
+      lastExportNotice: false,
+    })
+    schedulePersist(get, set)
+  },
+
+  upsertSource: (input, editorName) => {
+    const project = get().project
+    if (!project || get().mode !== 'edit') return { ok: false, error: 'Edit Mode required.' }
+    if (!input.title.trim()) return { ok: false, error: 'Source title is required.' }
+    const ts = nowIso()
+    const sources = project.sources ?? []
+    if (input.id) {
+      const existing = sources.find((source) => source.id === input.id)
+      if (!existing) return { ok: false, error: 'Source not found.' }
+      const updated: Source = {
+        ...existing,
+        ...input,
+        id: existing.id,
+        identifier: input.identifier?.trim() || '',
+        title: input.title.trim(),
+        description: ensureLinkSafety(input.description || ''),
+        notes: ensureLinkSafety(input.notes || ''),
+        modifiedAt: ts,
+        editorName: editorName || project.metadata.editorNameDefault || existing.editorName,
+      }
+      set({
+        project: touchProject({
+          ...project,
+          sources: sources.map((source) => (source.id === updated.id ? updated : source)),
+        }),
+        hasUnexportedChanges: true,
+        lastExportNotice: false,
+      })
+      schedulePersist(get, set)
+      return { ok: true, id: updated.id }
+    }
+    const created: Source = {
+      id: newId(),
+      identifier: input.identifier?.trim() || '',
+      title: input.title.trim(),
+      sourceType: input.sourceType?.trim() || '',
+      version: input.version?.trim() || '',
+      publisher: input.publisher?.trim() || '',
+      publicationDate: input.publicationDate || '',
+      url: input.url?.trim() || '',
+      filePath: input.filePath?.trim() || '',
+      description: ensureLinkSafety(input.description || ''),
+      notes: ensureLinkSafety(input.notes || ''),
+      createdAt: ts,
+      modifiedAt: ts,
+      editorName: editorName || project.metadata.editorNameDefault || '',
+    }
+    set({
+      project: touchProject({ ...project, sources: [...sources, created] }),
+      hasUnexportedChanges: true,
+      lastExportNotice: false,
+    })
+    schedulePersist(get, set)
+    return { ok: true, id: created.id }
+  },
+
+  deleteSource: (id) => {
+    const project = get().project
+    if (!project || get().mode !== 'edit') return
+    set({
+      project: touchProject({
+        ...project,
+        sources: (project.sources ?? []).filter((source) => source.id !== id),
+        requirementSourceLinks: (project.requirementSourceLinks ?? []).filter((link) => link.sourceId !== id),
+      }),
+      hasUnexportedChanges: true,
+      lastExportNotice: false,
+    })
+    schedulePersist(get, set)
+  },
+
+  upsertRequirementSourceLink: (input, editorName) => {
+    const project = get().project
+    if (!project || get().mode !== 'edit') return { ok: false, error: 'Edit Mode required.' }
+    if (!project.requirements.some((requirement) => requirement.id === input.requirementId)) {
+      return { ok: false, error: 'Requirement not found.' }
+    }
+    if (!(project.sources ?? []).some((source) => source.id === input.sourceId)) {
+      return { ok: false, error: 'Source not found.' }
+    }
+    const links = project.requirementSourceLinks ?? []
+    const duplicate = links.find(
+      (link) =>
+        link.id !== input.id &&
+        link.requirementId === input.requirementId &&
+        link.sourceId === input.sourceId &&
+        link.type === input.type,
+    )
+    const ts = nowIso()
+    if (input.id) {
+      const existing = links.find((link) => link.id === input.id)
+      if (!existing) return { ok: false, error: 'Source relationship not found.' }
+      const updated: RequirementSourceLink = {
+        ...existing,
+        ...input,
+        id: existing.id,
+        locator: input.locator?.trim() || '',
+        rationale: ensureLinkSafety(input.rationale || ''),
+        notes: ensureLinkSafety(input.notes || ''),
+        modifiedAt: ts,
+        editorName: editorName || project.metadata.editorNameDefault || existing.editorName,
+      }
+      set({
+        project: touchProject({
+          ...project,
+          requirementSourceLinks: links.map((link) => (link.id === updated.id ? updated : link)),
+        }),
+        hasUnexportedChanges: true,
+        lastExportNotice: false,
+      })
+      schedulePersist(get, set)
+      return {
+        ok: true,
+        id: updated.id,
+        warning: duplicate ? 'A similar requirement–source relationship already exists.' : undefined,
+      }
+    }
+    const created: RequirementSourceLink = {
+      id: newId(),
+      requirementId: input.requirementId,
+      sourceId: input.sourceId,
+      type: input.type,
+      locator: input.locator?.trim() || '',
+      rationale: ensureLinkSafety(input.rationale || ''),
+      notes: ensureLinkSafety(input.notes || ''),
+      createdAt: ts,
+      modifiedAt: ts,
+      editorName: editorName || project.metadata.editorNameDefault || '',
+    }
+    set({
+      project: touchProject({ ...project, requirementSourceLinks: [...links, created] }),
+      hasUnexportedChanges: true,
+      lastExportNotice: false,
+    })
+    schedulePersist(get, set)
+    return {
+      ok: true,
+      id: created.id,
+      warning: duplicate ? 'A duplicate requirement–source relationship already exists.' : undefined,
+    }
+  },
+
+  deleteRequirementSourceLink: (id) => {
+    const project = get().project
+    if (!project || get().mode !== 'edit') return
+    set({
+      project: touchProject({
+        ...project,
+        requirementSourceLinks: (project.requirementSourceLinks ?? []).filter((link) => link.id !== id),
       }),
       hasUnexportedChanges: true,
       lastExportNotice: false,
@@ -1200,7 +1395,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     schedulePersist(get, set)
   },
 
-  setGraphFocus: (id) => set({ graphFocusId: id }),
+  setGraphFocus: (id) => set({ graphFocusId: id, graphFocusKind: 'requirement' }),
+  setGraphSourceFocus: (id) => set({ graphFocusId: id, graphFocusKind: 'source' }),
   setGraphDepth: (depth) => set({ graphDepth: depth }),
   setGraphTypes: (types) => set({ graphTypes: types }),
   setMatrixTypes: (types) => set({ matrixTypes: types }),

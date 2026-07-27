@@ -2,6 +2,7 @@ import {
   FILE_FORMAT_ID,
   RELATIONSHIP_TYPES,
   SCHEMA_VERSION,
+  SOURCE_RELATIONSHIP_TYPES,
   type ProjectData,
   type Requirement,
   type RequirementRelationship,
@@ -47,16 +48,8 @@ function pushIssue(issues: ValidationIssue[], issue: ValidationIssue, warningCou
  * Intentionally does NOT run per-field DOM sanitization here — that was freezing
  * large imports. Display/edit paths sanitize on render and save instead.
  */
-function migrateProject(raw: ProjectData, issues: ValidationIssue[]): ProjectData {
+function normalizeCurrentProject(raw: ProjectData): ProjectData {
   const project = raw
-  if (project.schemaVersion < SCHEMA_VERSION) {
-    issues.push({
-      level: 'warning',
-      message: `Migrated project from schema v${project.schemaVersion} to v${SCHEMA_VERSION}.`,
-    })
-    project.schemaVersion = SCHEMA_VERSION
-    project.metadata.schemaVersion = SCHEMA_VERSION
-  }
   project.lookups = {
     statuses: project.lookups?.statuses ?? [],
     types: project.lookups?.types ?? [],
@@ -74,6 +67,8 @@ function migrateProject(raw: ProjectData, issues: ValidationIssue[]): ProjectDat
   project.tags ??= []
   project.requirements ??= []
   project.relationships ??= []
+  project.sources ??= []
+  project.requirementSourceLinks ??= []
   project.testActivities ??= []
   project.requirementActivityLinks ??= []
   project.evidence ??= []
@@ -131,13 +126,13 @@ export function parseAndValidateProject(rawText: string): LoadResult {
     }
   }
 
-  if (parsed.schemaVersion > SCHEMA_VERSION) {
+  if (parsed.schemaVersion !== SCHEMA_VERSION) {
     return {
       ok: false,
       issues: [
         {
           level: 'error',
-          message: `Unsupported future schema version ${parsed.schemaVersion}. This application supports up to v${SCHEMA_VERSION}.`,
+          message: `Unsupported schema version ${parsed.schemaVersion}. Expected v${SCHEMA_VERSION}.`,
         },
       ],
     }
@@ -150,7 +145,7 @@ export function parseAndValidateProject(rawText: string): LoadResult {
     }
   }
 
-  const project = migrateProject(parsed as unknown as ProjectData, issues)
+  const project = normalizeCurrentProject(parsed as unknown as ProjectData)
   const reqIds = new Set<string>()
   for (const req of project.requirements) {
     if (req?.id) reqIds.add(req.id)
@@ -158,6 +153,7 @@ export function parseAndValidateProject(rawText: string): LoadResult {
   const activityIds = new Set(project.testActivities.map((t) => t.id))
   const evidenceIds = new Set(project.evidence.map((e) => e.id))
   const tagIds = new Set(project.tags.map((t) => t.id))
+  const sourceIds = new Set(project.sources.map((source) => source.id))
 
   for (const req of project.requirements) {
     if (!req.id || !req.sourceId?.trim() || !plainRequired(req.requirementText) || !req.statusId || !req.classificationId) {
@@ -227,6 +223,45 @@ export function parseAndValidateProject(rawText: string): LoadResult {
           level: 'warning',
           message: `Broken relationship reference (${rel.type}).`,
           path: `relationships.${rel.id}`,
+        },
+        warningCount,
+      )
+    }
+  }
+
+  for (const source of project.sources) {
+    if (!source.id || !source.title?.trim()) {
+      pushIssue(
+        issues,
+        {
+          level: 'error',
+          message: `Source "${source.identifier || source.id || 'unknown'}" is missing required fields.`,
+          path: `sources.${source.id || 'unknown'}`,
+        },
+        warningCount,
+      )
+    }
+  }
+
+  for (const link of project.requirementSourceLinks) {
+    if (!SOURCE_RELATIONSHIP_TYPES.includes(link.type)) {
+      pushIssue(
+        issues,
+        {
+          level: 'error',
+          message: `Unsupported requirement–source relationship type "${link.type}".`,
+          path: `requirementSourceLinks.${link.id}`,
+        },
+        warningCount,
+      )
+    }
+    if (!reqIds.has(link.requirementId) || !sourceIds.has(link.sourceId)) {
+      pushIssue(
+        issues,
+        {
+          level: 'warning',
+          message: `Broken requirement–source link ${link.id}.`,
+          path: `requirementSourceLinks.${link.id}`,
         },
         warningCount,
       )

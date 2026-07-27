@@ -9,6 +9,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 const NAV = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/requirements', label: 'Requirements' },
+  { to: '/sources', label: 'Sources' },
   { to: '/matrix', label: 'Matrix' },
   { to: '/graph', label: 'Graph' },
   { to: '/activities', label: 'Activities' },
@@ -167,7 +168,7 @@ export function AppShell() {
         </div>
       )}
 
-      <div className="mx-auto flex w-full max-w-[1700px] flex-1 gap-0 md:gap-3 px-0 md:px-3 py-0 md:py-2">
+      <div className="mx-auto flex w-full max-w-[1700px] flex-1 gap-0 md:gap-3 px-0 md:px-3 pt-0 pb-36 md:pt-4">
         <nav className="no-print hidden w-[11.5rem] shrink-0 md:block">
           <div className="panel app-side-nav sticky overflow-hidden">
             <div className="border-b border-[var(--color-line)] bg-[var(--color-panel)] px-2 py-1.5 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
@@ -193,7 +194,7 @@ export function AppShell() {
               ))}
             </ul>
             <div className="border-t border-[var(--color-line)] px-2 py-1.5 text-[0.62rem] text-[var(--color-ink-muted)]">
-              {project.requirements.length} reqs · {project.relationships.length} rels
+              {project.requirements.length} reqs · {(project.sources ?? []).length} sources · {project.relationships.length} rels
             </div>
           </div>
         </nav>

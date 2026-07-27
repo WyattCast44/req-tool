@@ -28,8 +28,8 @@ export function DashboardPage() {
         <div>
           <h2 className="page-title">Dashboard</h2>
           <p className="page-subtitle">
-            {project.requirements.length} requirements · {project.testActivities.length} activities ·{' '}
-            {project.relationships.length} relationships
+            {project.requirements.length} requirements · {(project.sources ?? []).length} sources ·{' '}
+            {project.testActivities.length} activities · {project.relationships.length} requirement relationships
           </p>
         </div>
       </div>
@@ -59,28 +59,6 @@ export function DashboardPage() {
                   <div className="stat-value">{item.count}</div>
                   <div className="stat-label">{item.label}</div>
                 </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="panel p-2.5">
-            <h3 className="section-title">Verification coverage</h3>
-            <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3 xl:grid-cols-5">
-              {[
-                ['With method', stats.verification.withMethod],
-                ['With activity', stats.verification.withActivity],
-                ['With evidence', stats.verification.withEvidence],
-                ['Assessed', stats.verification.assessed],
-                ['Not yet assessed', stats.verification.notYetAssessed],
-                ['Met', stats.verification.met],
-                ['Partially met', stats.verification.partiallyMet],
-                ['Not met', stats.verification.notMet],
-                ['Inconclusive', stats.verification.inconclusive],
-              ].map(([label, count]) => (
-                <div key={String(label)} className="stat-tile">
-                  <div className="stat-value">{count as number}</div>
-                  <div className="stat-label">{label as string}</div>
-                </div>
               ))}
             </div>
           </section>

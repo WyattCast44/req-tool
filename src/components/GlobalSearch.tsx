@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
-import { cheapPlainText } from '../lib/filters'
+import { cheapPlainText, requirementSearchText } from '../lib/filters'
 import { lookupLabel } from '../lib/defaults'
 
 type SearchHit =
@@ -40,17 +40,7 @@ export function GlobalSearch() {
     const q = query.trim().toLowerCase()
     const reqHits: SearchHit[] = []
     for (const req of project.requirements) {
-      const hay = [
-        req.sourceId,
-        req.shortTitle,
-        cheapPlainText(req.requirementText),
-        req.sourceDocument,
-        req.sourceSection,
-        req.editorName,
-        req.changeSummary,
-      ]
-        .join(' ')
-        .toLowerCase()
+      const hay = requirementSearchText(project, req)
       if (!hay.includes(q)) continue
       reqHits.push({
         kind: 'requirement',

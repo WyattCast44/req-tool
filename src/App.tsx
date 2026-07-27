@@ -15,6 +15,8 @@ import { ReportsPage } from './pages/ReportsPage'
 import { PrintReportPage } from './pages/PrintReportPage'
 import { LookupsPage } from './pages/LookupsPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { SourcesPage } from './pages/SourcesPage'
+import { SourceDetailPage } from './pages/SourceDetailPage'
 
 function RequireProject({ children }: { children: ReactNode }) {
   const project = useProjectStore((s) => s.project)
@@ -51,6 +53,8 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/requirements" element={<RequirementsPage />} />
           <Route path="/requirements/:id" element={<RequirementDetailPage />} />
+          <Route path="/sources" element={<SourcesPage />} />
+          <Route path="/sources/:id" element={<SourceDetailPage />} />
           <Route path="/matrix" element={<MatrixPage />} />
           <Route path="/graph" element={<GraphPage />} />
           <Route path="/activities" element={<ActivitiesPage />} />
