@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
 import { buildDashboardStats } from '../lib/filters'
@@ -11,9 +12,9 @@ export function DashboardPage() {
   const setFilters = useProjectStore((s) => s.setFilters)
   const resetFilters = useProjectStore((s) => s.resetFilters)
 
-  if (!project) return null
+  const stats = useMemo(() => (project ? buildDashboardStats(project) : null), [project])
 
-  const stats = buildDashboardStats(project)
+  if (!project || !stats) return null
 
   const goFiltered = (configure: () => void) => {
     resetFilters()
