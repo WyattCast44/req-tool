@@ -6,6 +6,7 @@ import {
   type ProjectData,
   type Requirement,
   type RequirementRelationship,
+  WATCH_ITEM_STATUSES,
 } from '../types/project'
 
 export interface ValidationIssue {
@@ -66,6 +67,7 @@ function normalizeCurrentProject(raw: ProjectData): ProjectData {
   project.tagCategories ??= []
   project.tags ??= []
   project.requirements ??= []
+  project.watchItems ??= []
   project.relationships ??= []
   project.sources ??= []
   project.requirementSourceLinks ??= []
@@ -75,6 +77,11 @@ function normalizeCurrentProject(raw: ProjectData): ProjectData {
   project.verifications ??= []
   project.assessments ??= []
   project.savedViews ??= []
+  for (const req of project.requirements) {
+    if (typeof req.sourceDocumentId !== 'string') {
+      req.sourceDocumentId = ''
+    }
+  }
   return project
 }
 
@@ -145,6 +152,19 @@ export function parseAndValidateProject(rawText: string): LoadResult {
     }
   }
 
+  if (!Array.isArray(parsed.watchItems)) {
+    return {
+      ok: false,
+      issues: [
+        {
+          level: 'error',
+          message: 'Project is missing the current watchItems collection.',
+          path: 'watchItems',
+        },
+      ],
+    }
+  }
+
   const project = normalizeCurrentProject(parsed as unknown as ProjectData)
   const reqIds = new Set<string>()
   for (const req of project.requirements) {
@@ -167,6 +187,110 @@ export function parseAndValidateProject(rawText: string): LoadResult {
         warningCount,
       )
     }
+    if (req.sourceDocumentId && !sourceIds.has(req.sourceDocumentId)) {
+      pushIssue(
+        issues,
+        {
+          level: 'warning',
+          message: `Requirement ${req.sourceId} references missing source document ${req.sourceDocumentId}.`,
+          path: `requirements.${req.id}.sourceDocumentId`,
+        },
+        warningCount,
+      )
+    }
+  }
+
+  for (const [index, watchItem] of project.watchItems.entries()) {
+    if (!isObject(watchItem)) {
+      pushIssue(
+        issues,
+        {
+          level: 'error',
+          message: `Watch item at index ${index} must be an object.`,
+          path: `watchItems.${index}`,
+        },
+        warningCount,
+      )
+      continue
+    }
+
+    const label =
+      typeof watchItem.title === 'string' && watchItem.title
+        ? watchItem.title
+        : typeof watchItem.id === 'string' && watchItem.id
+          ? watchItem.id
+          : `entry ${index + 1}`
+    if (
+      typeof watchItem.id !== 'string' ||
+      !watchItem.id ||
+      typeof watchItem.title !== 'string' ||
+      !watchItem.title.trim() ||
+      typeof watchItem.description !== 'string' ||
+      !WATCH_ITEM_STATUSES.some((status) => status === watchItem.status) ||
+      !Array.isArray(watchItem.observations) ||
+      watchItem.observations.length === 0 ||
+      watchItem.observations.some(
+        (observation) =>
+          !isObject(observation) ||
+          typeof observation.id !== 'string' ||
+          !observation.id ||
+          typeof observation.text !== 'string' ||
+          !plainRequired(observation.text) ||
+          typeof observation.createdAt !== 'string' ||
+          !observation.createdAt ||
+          typeof observation.modifiedAt !== 'string' ||
+          !observation.modifiedAt ||
+          typeof observation.editorName !== 'string',
+      ) ||
+      !Array.isArray(watchItem.requirementIds) ||
+      !Array.isArray(watchItem.sourceIds) ||
+      typeof watchItem.createdAt !== 'string' ||
+      !watchItem.createdAt ||
+      typeof watchItem.modifiedAt !== 'string' ||
+      !watchItem.modifiedAt ||
+      typeof watchItem.editorName !== 'string'
+    ) {
+      pushIssue(
+        issues,
+        {
+          level: 'error',
+          message: `Watch item "${label}" is missing required fields.`,
+          path: typeof watchItem.id === 'string' && watchItem.id
+            ? `watchItems.${watchItem.id}`
+            : `watchItems.${index}`,
+        },
+        warningCount,
+      )
+      continue
+    }
+
+    for (const requirementId of watchItem.requirementIds) {
+      if (!reqIds.has(requirementId)) {
+        pushIssue(
+          issues,
+          {
+            level: 'warning',
+            message: `Watch item "${watchItem.title}" references missing requirement ${requirementId}.`,
+          },
+          warningCount,
+        )
+      }
+    }
+    for (const sourceId of watchItem.sourceIds) {
+      if (!sourceIds.has(sourceId)) {
+        pushIssue(
+          issues,
+          {
+            level: 'warning',
+            message: `Watch item "${watchItem.title}" references missing source ${sourceId}.`,
+          },
+          warningCount,
+        )
+      }
+    }
+  }
+
+  for (const req of project.requirements) {
     for (const tagId of req.tagIds || []) {
       if (!tagIds.has(tagId)) {
         pushIssue(

@@ -16,6 +16,8 @@ interface FuzzySelectProps {
   /** Shown when nothing is selected. */
   emptyLabel?: string
   allowClear?: boolean
+  /** Allow typing a value that is not in the options list. */
+  allowCustom?: boolean
   disabled?: boolean
   className?: string
   id?: string
@@ -28,6 +30,7 @@ export function FuzzySelect({
   placeholder = 'Search…',
   emptyLabel = 'Select…',
   allowClear = false,
+  allowCustom = false,
   disabled = false,
   className = '',
   id,
@@ -87,7 +90,14 @@ export function FuzzySelect({
     inputRef.current?.blur()
   }
 
-  const displayValue = open ? query : selected?.label || ''
+  const commitCustom = (next: string) => {
+    onChange(next)
+    setOpen(false)
+    setQuery('')
+    inputRef.current?.blur()
+  }
+
+  const displayValue = open ? query : selected?.label || (allowCustom ? value : '')
 
   return (
     <div ref={rootRef} className={`fuzzy-select ${className}`.trim()}>
@@ -103,16 +113,18 @@ export function FuzzySelect({
           aria-activedescendant={open && items[activeIndex] ? `${listboxId}-${activeIndex}` : undefined}
           className="field-input fuzzy-select-input"
           disabled={disabled}
-          placeholder={selected ? selected.label : placeholder}
+          placeholder={selected || (allowCustom && value) ? selected?.label || value : placeholder}
           value={displayValue}
           onFocus={() => {
             if (disabled) return
             setOpen(true)
-            setQuery('')
+            setQuery(allowCustom ? value || '' : '')
           }}
           onChange={(event) => {
-            setQuery(event.target.value)
+            const next = event.target.value
+            setQuery(next)
             setOpen(true)
+            if (allowCustom) onChange(next)
           }}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown') {
@@ -126,6 +138,7 @@ export function FuzzySelect({
               event.preventDefault()
               const item = items[activeIndex]
               if (item) selectOption(item.id)
+              else if (allowCustom) commitCustom(query.trim())
             } else if (event.key === 'Escape') {
               event.preventDefault()
               setOpen(false)
@@ -142,7 +155,20 @@ export function FuzzySelect({
       {open && !disabled && (
         <ul id={listboxId} className="fuzzy-select-panel" role="listbox">
           {items.length === 0 ? (
-            <li className="px-2.5 py-2 text-[0.75rem] text-[var(--color-ink-muted)]">No matches</li>
+            <li className="px-2.5 py-2 text-[0.75rem] text-[var(--color-ink-muted)]" role="presentation">
+              {allowCustom && query.trim() ? (
+                <button
+                  type="button"
+                  className="fuzzy-select-item w-full px-0 py-0"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => commitCustom(query.trim())}
+                >
+                  Use “{query.trim()}”
+                </button>
+              ) : (
+                'No matches'
+              )}
+            </li>
           ) : (
             items.map((item, index) => {
               const isClear = item.id === ''

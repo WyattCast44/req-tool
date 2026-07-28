@@ -553,6 +553,7 @@
   ],
   "requirements": [
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "<p>Primary detection requirement for OT mission threads.</p>",
       "analystNotes": "",
       "rationale": "<p>Supports the surveillance critical operational issue.</p>",
@@ -581,6 +582,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -606,6 +608,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "<ul><li>Confirm measurement point definitions with Comms IPT.</li></ul>",
       "rationale": "",
@@ -630,6 +633,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000302"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -657,6 +661,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -682,6 +687,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -706,6 +712,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000302"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -730,6 +737,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -753,6 +761,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -776,6 +785,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -800,6 +810,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -821,6 +832,7 @@
       "classificationId": "00000000-0000-4000-8000-000000000301"
     },
     {
+      "sourceDocumentId": "00000000-0000-4000-8000-000000004501",
       "description": "",
       "analystNotes": "",
       "rationale": "",
@@ -844,6 +856,60 @@
       "requirementText": "<p>The system shall correlate multi-sensor contacts into a single operator-facing track when confidence exceeds threshold.</p>",
       "statusId": "00000000-0000-4000-8000-000000000102",
       "classificationId": "00000000-0000-4000-8000-000000000301"
+    }
+  ],
+  "watchItems": [
+    {
+      "id": "00000000-0000-4000-8000-000000004701",
+      "title": "Confirm communications measurement points",
+      "description": "<p>Resolve the end-to-end latency measurement boundary before the OT-1 readiness review.</p>",
+      "status": "Monitoring",
+      "observations": [
+        {
+          "id": "00000000-0000-4000-8000-000000004711",
+          "text": "<p>Instrumentation working group has two candidate measurement-point definitions.</p>",
+          "createdAt": "2026-07-22T09:15:00.000Z",
+          "modifiedAt": "2026-07-22T09:15:00.000Z",
+          "editorName": "A. Rivera"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000004712",
+          "text": "<p>Program office will adjudicate the definition at the next technical interchange.</p>",
+          "createdAt": "2026-07-25T16:45:00.000Z",
+          "modifiedAt": "2026-07-25T16:45:00.000Z",
+          "editorName": "J. Chen"
+        }
+      ],
+      "requirementIds": [
+        "00000000-0000-4000-8000-000000002003",
+        "00000000-0000-4000-8000-000000002005"
+      ],
+      "sourceIds": [
+        "00000000-0000-4000-8000-000000004501"
+      ],
+      "createdAt": "2026-07-22T09:15:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z",
+      "editorName": "J. Chen"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000004702",
+      "title": "Night-condition operator workload",
+      "description": "<p>Track potential workload growth during night surveillance scenarios.</p>",
+      "status": "Open",
+      "observations": [
+        {
+          "id": "00000000-0000-4000-8000-000000004721",
+          "text": "<p>Early tabletop feedback indicates alert acknowledgement may compete with track management.</p>",
+          "createdAt": "2026-07-25T16:45:00.000Z",
+          "modifiedAt": "2026-07-25T16:45:00.000Z",
+          "editorName": "A. Rivera"
+        }
+      ],
+      "requirementIds": [],
+      "sourceIds": [],
+      "createdAt": "2026-07-25T16:45:00.000Z",
+      "modifiedAt": "2026-07-25T16:45:00.000Z",
+      "editorName": "A. Rivera"
     }
   ],
   "relationships": [

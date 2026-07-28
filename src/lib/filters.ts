@@ -46,6 +46,14 @@ export function requirementSearchText(project: ProjectData, req: Requirement, in
       return e ? `${e.title} ${e.fileName} ${e.filePath} ${e.notes}` : ''
     })
     .join(' ')
+  const ownedSource = req.sourceDocumentId
+    ? indexes
+      ? indexes.sourceById.get(req.sourceDocumentId)
+      : (project.sources ?? []).find((item) => item.id === req.sourceDocumentId)
+    : undefined
+  const ownedSourceText = ownedSource
+    ? `${ownedSource.identifier} ${ownedSource.title} ${ownedSource.sourceType} ${ownedSource.version} ${ownedSource.publisher}`
+    : ''
   const sourceText = (indexes?.sourceLinksByReq.get(req.id) ||
     (project.requirementSourceLinks ?? []).filter((link) => link.requirementId === req.id))
     .map((link) => {
@@ -66,6 +74,7 @@ export function requirementSearchText(project: ProjectData, req: Requirement, in
     cheapPlainText(req.rationale),
     req.editorName,
     req.changeSummary,
+    ownedSourceText,
     sourceText,
     evidenceText,
   ]
@@ -112,8 +121,10 @@ export function matchesFilters(
   if (filters.typeIds.length && !filters.typeIds.includes(req.typeId)) return false
   if (filters.priorityIds.length && !filters.priorityIds.includes(req.priorityId)) return false
   if (filters.sourceIds.length) {
+    const ownedMatches = req.sourceDocumentId && filters.sourceIds.includes(req.sourceDocumentId)
     const linkedSourceIds = (idx.sourceLinksByReq.get(req.id) || []).map((link) => link.sourceId)
-    if (!filters.sourceIds.some((id) => linkedSourceIds.includes(id))) return false
+    const linkedMatches = filters.sourceIds.some((id) => linkedSourceIds.includes(id))
+    if (!ownedMatches && !linkedMatches) return false
   }
   if (filters.verificationMethodIds.length) {
     const methods = (idx.verificationsByReq.get(req.id) || []).map((v) => v.methodId)

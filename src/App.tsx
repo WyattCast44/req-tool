@@ -17,13 +17,15 @@ import { LookupsPage } from './pages/LookupsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SourcesPage } from './pages/SourcesPage'
 import { SourceDetailPage } from './pages/SourceDetailPage'
+import { WatchItemsPage } from './pages/WatchItemsPage'
+import { WatchItemDetailPage } from './pages/WatchItemDetailPage'
 
 function RequireProject({ children }: { children: ReactNode }) {
   const project = useProjectStore((s) => s.project)
   const hydrated = useProjectStore((s) => s.hydrated)
   if (!hydrated) {
     return (
-      <div className="flex min-h-full items-center justify-center p-8 text-sm text-[var(--color-ink-muted)]">
+      <div className="muted-copy flex min-h-full items-center justify-center p-8">
         Loading local workspace…
       </div>
     )
@@ -54,6 +56,8 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/requirements" element={<RequirementsPage />} />
           <Route path="/requirements/:id" element={<RequirementDetailPage />} />
+          <Route path="/watch-items" element={<WatchItemsPage />} />
+          <Route path="/watch-items/:id" element={<WatchItemDetailPage />} />
           <Route path="/sources" element={<SourcesPage />} />
           <Route path="/sources/:id" element={<SourceDetailPage />} />
           <Route path="/matrix" element={<MatrixPage />} />

@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '../components/DataTable'
 import { EmptyState } from '../components/EmptyState'
+import { PageHeader } from '../components/PageHeader'
 import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { formatDateTime } from '../lib/ids'
-import { countDistinctLinkedRequirements } from '../lib/sourceLinks'
+import { countRequirementsForSource } from '../lib/sourceLinks'
 import { useProjectStore } from '../store/projectStore'
 import type { Source } from '../types/project'
 
@@ -34,10 +35,7 @@ export function SourcesPage() {
         sourceType: source.sourceType,
         version: source.version,
         publisher: source.publisher,
-        linkedRequirements: countDistinctLinkedRequirements(
-          project.requirementSourceLinks,
-          source.id,
-        ),
+        linkedRequirements: countRequirementsForSource(project.requirements, source.id),
         modifiedAt: source.modifiedAt,
         source,
       })),
@@ -107,19 +105,17 @@ export function SourcesPage() {
 
   return (
     <div className="space-y-2.5">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Sources</h2>
-          <p className="page-subtitle">
-            Reusable documents, policies, standards, interviews, and other origins linked to requirements.
-          </p>
-        </div>
-        {editing && (
-          <Link className="btn btn-primary" to="/sources/new">
-            New Source
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="Sources"
+        subtitle="Reusable documents, policies, standards, interviews, and other origins linked to requirements."
+        actions={
+          editing ? (
+            <Link className="btn btn-primary" to="/sources/new">
+              New Source
+            </Link>
+          ) : undefined
+        }
+      />
 
       {rows.length === 0 ? (
         <EmptyState

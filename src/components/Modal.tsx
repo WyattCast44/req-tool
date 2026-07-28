@@ -19,18 +19,14 @@ export function Modal({ title, open, onClose, children, footer, wide }: ModalPro
         aria-label={title}
         className={`panel w-full ${wide ? 'max-w-4xl' : 'max-w-lg'} overflow-hidden`}
       >
-        <div className="flex items-center justify-between border-b border-[var(--color-line)] px-3 py-2">
-          <h2 className="text-[0.95rem] font-semibold">{title}</h2>
-          <button type="button" className="btn btn-ghost" onClick={onClose} aria-label="Close">
+        <div className="modal-header">
+          <h2 className="modal-title">{title}</h2>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
-        <div className="px-3 py-3">{children}</div>
-        {footer && (
-          <div className="flex justify-end gap-1.5 border-t border-[var(--color-line)] bg-[var(--color-panel)] px-3 py-2">
-            {footer}
-          </div>
-        )}
+        <div className="modal-body">{children}</div>
+        {footer && <div className="modal-footer">{footer}</div>}
       </div>
     </div>
   )

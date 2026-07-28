@@ -1,7 +1,8 @@
 import { Packer } from 'docx'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createTestProject, createTestRequirement } from '../test/projectFactory'
 import { createRequirementsDocx, docxPlainText } from './requirementsDocx'
+import { generateRequirementsDocx } from './requirementsDocxExport'
 
 describe('Word requirement exports', () => {
   it('converts supported rich text to readable document text', () => {
@@ -30,5 +31,71 @@ describe('Word requirement exports', () => {
 
     expect(buffer.byteLength).toBeGreaterThan(1_000)
     expect(buffer.subarray(0, 2).toString()).toBe('PK')
+  })
+
+  it('packages a DOCX when background workers are unavailable', async () => {
+    const project = createTestProject()
+    const requirement = createTestRequirement(project, 'req-fallback')
+    project.requirements = [requirement]
+    const progress: string[] = []
+
+    const blob = await generateRequirementsDocx(
+      project,
+      [requirement.id],
+      (message) => progress.push(message),
+    )
+    const signature = new TextDecoder().decode(
+      new Uint8Array(await blob.arrayBuffer()).subarray(0, 2),
+    )
+
+    expect(signature).toBe('PK')
+    expect(blob.type).toBe(
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    expect(progress).toEqual([
+      'Building Word document…',
+      'Packaging Word document…',
+    ])
+  })
+
+  it('retries on the main thread when the background worker stops', async () => {
+    class StoppedWorker {
+      onerror: ((event: ErrorEvent) => void) | null = null
+
+      postMessage() {
+        queueMicrotask(() => {
+          this.onerror?.({
+            message: 'Synthetic worker failure',
+            preventDefault: () => undefined,
+          } as ErrorEvent)
+        })
+      }
+
+      terminate() {}
+    }
+
+    vi.stubGlobal('Worker', StoppedWorker)
+    try {
+      const project = createTestProject()
+      const requirement = createTestRequirement(project, 'req-worker-retry')
+      project.requirements = [requirement]
+      const progress: string[] = []
+
+      const blob = await generateRequirementsDocx(
+        project,
+        [requirement.id],
+        (message) => progress.push(message),
+      )
+      const signature = new TextDecoder().decode(
+        new Uint8Array(await blob.arrayBuffer()).subarray(0, 2),
+      )
+
+      expect(signature).toBe('PK')
+      expect(progress).toContain(
+        'Background export stopped; continuing in this window…',
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

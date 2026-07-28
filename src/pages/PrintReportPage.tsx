@@ -81,7 +81,7 @@ export function PrintReportPage() {
             <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
               {project.metadata.name}
             </h1>
-            <p className="text-sm text-[var(--color-ink-muted)]">
+            <p className="muted-copy">
               Generated {formatDateTime(new Date().toISOString())}
             </p>
           </div>
@@ -127,6 +127,13 @@ export function PrintReportPage() {
                     <div>Type: {lookupLabel(project.lookups.types, req.typeId)}</div>
                     <div>Priority: {lookupLabel(project.lookups.priorities, req.priorityId)}</div>
                     <div>Tags: {tags.join(', ') || '—'}</div>
+                  </div>
+                  <div className="mt-3 text-sm">
+                    <div className="field-label">Linked watch items</div>
+                    {project.watchItems
+                      .filter((watchItem) => watchItem.requirementIds.includes(req.id))
+                      .map((watchItem) => `${watchItem.title} (${watchItem.status})`)
+                      .join(', ') || '—'}
                   </div>
                   <div className="mt-3">
                     <div className="field-label">Requirement text</div>

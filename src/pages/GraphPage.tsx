@@ -4,6 +4,7 @@ import { FuzzySelect } from '../components/FuzzySelect'
 import { FuzzyMultiSelect } from '../components/FuzzyMultiSelect'
 import { RelationshipGraph } from '../components/RelationshipGraph'
 import { RequirementHoverPreview } from '../components/RequirementHoverPreview'
+import { PageHeader } from '../components/PageHeader'
 import { useProjectStore } from '../store/projectStore'
 import {
   RELATIONSHIP_TYPES,
@@ -186,252 +187,272 @@ export function GraphPage() {
 
   return (
     <div className="space-y-2.5">
-      <div>
-        <h2 className="page-title">Relationship Graph</h2>
-        <p className="page-subtitle">
-          {focusKind === 'source'
+      <PageHeader
+        title="Relationship Graph"
+        subtitle={
+          focusKind === 'source'
             ? 'Focused neighborhood around a selected source and its linked requirements.'
-            : 'Focused neighborhood around a selected requirement. Full-project graphs are intentionally avoided.'}
-        </p>
-      </div>
+            : 'Focused neighborhood around a selected requirement. Full-project graphs are intentionally avoided.'
+        }
+      />
 
       <div className="grid gap-3 xl:grid-cols-[22rem_minmax(0,1fr)]">
         <aside className="space-y-3">
-          <section className="panel space-y-3 p-3">
-            <div>
-              <span className="field-label">Center on</span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  className={`btn flex-1 ${focusKind === 'requirement' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => {
-                    const nextId =
-                      graphFocusKind === 'requirement' ? focusId : project.requirements[0]?.id || null
-                    setGraphFocus(nextId)
-                    setSelectedEdge(null)
-                  }}
-                >
-                  Requirement
-                </button>
-                <button
-                  type="button"
-                  className={`btn flex-1 ${focusKind === 'source' ? 'btn-primary' : 'btn-secondary'}`}
-                  disabled={sources.length === 0}
-                  onClick={() => {
-                    const nextId = graphFocusKind === 'source' ? focusId : sources[0]?.id || null
-                    setGraphSourceFocus(nextId)
-                    setSelectedEdge(null)
-                  }}
-                >
-                  Source
-                </button>
-              </div>
+          <section className="panel">
+            <div className="panel-header">
+              <h3>Focus</h3>
             </div>
-            <label className="block">
-              <span className="field-label">
-                {focusKind === 'source' ? 'Center source' : 'Center requirement'}
-              </span>
-              {focusKind === 'source' ? (
-                <FuzzySelect
-                  options={sourceOptions}
-                  value={focusId || ''}
-                  onChange={(id) => {
-                    setGraphSourceFocus(id || null)
-                    setSelectedEdge(null)
-                  }}
-                  placeholder="Search sources…"
-                />
-              ) : (
-                <FuzzySelect
-                  options={requirementOptions}
-                  value={focusId || ''}
-                  onChange={(id) => {
-                    setGraphFocus(id || null)
-                    setSelectedEdge(null)
-                  }}
-                  placeholder="Search requirements…"
-                />
-              )}
-            </label>
-            <label className="block">
-              <span className="field-label">Relationship depth</span>
-              <select
-                className="field-input"
-                value={graphDepth}
-                onChange={(e) => setGraphDepth(Number(e.target.value))}
-              >
-                {[1, 2, 3].map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="panel-body space-y-3">
+              <div>
+                <span className="field-label">Center on</span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    className={`btn flex-1 ${focusKind === 'requirement' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => {
+                      const nextId =
+                        graphFocusKind === 'requirement' ? focusId : project.requirements[0]?.id || null
+                      setGraphFocus(nextId)
+                      setSelectedEdge(null)
+                    }}
+                  >
+                    Requirement
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn flex-1 ${focusKind === 'source' ? 'btn-primary' : 'btn-secondary'}`}
+                    disabled={sources.length === 0}
+                    onClick={() => {
+                      const nextId = graphFocusKind === 'source' ? focusId : sources[0]?.id || null
+                      setGraphSourceFocus(nextId)
+                      setSelectedEdge(null)
+                    }}
+                  >
+                    Source
+                  </button>
+                </div>
+              </div>
+              <label className="block">
+                <span className="field-label">
+                  {focusKind === 'source' ? 'Center source' : 'Center requirement'}
+                </span>
+                {focusKind === 'source' ? (
+                  <FuzzySelect
+                    options={sourceOptions}
+                    value={focusId || ''}
+                    onChange={(id) => {
+                      setGraphSourceFocus(id || null)
+                      setSelectedEdge(null)
+                    }}
+                    placeholder="Search sources…"
+                  />
+                ) : (
+                  <FuzzySelect
+                    options={requirementOptions}
+                    value={focusId || ''}
+                    onChange={(id) => {
+                      setGraphFocus(id || null)
+                      setSelectedEdge(null)
+                    }}
+                    placeholder="Search requirements…"
+                  />
+                )}
+              </label>
+              <label className="block">
+                <span className="field-label">Relationship depth</span>
+                <select
+                  className="field-input"
+                  value={graphDepth}
+                  onChange={(e) => setGraphDepth(Number(e.target.value))}
+                >
+                  {[1, 2, 3].map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </section>
 
-          <section className="panel space-y-3 p-3">
-            <label className="block">
-              <span className="field-label">
-                Status filter
-                {statusFilter.length > 0 ? (
-                  <span className="ml-1 text-[var(--color-accent)]">({statusFilter.length})</span>
-                ) : null}
-              </span>
-              <FuzzyMultiSelect
-                options={project.lookups.statuses.map((status) => ({
-                  id: status.id,
-                  label: status.value,
-                }))}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                placeholder="Search statuses…"
-              />
-            </label>
-            <label className="block">
-              <span className="field-label">
-                Tag filter
-                {tagFilter.length > 0 ? (
-                  <span className="ml-1 text-[var(--color-accent)]">({tagFilter.length})</span>
-                ) : null}
-              </span>
-              <FuzzyMultiSelect
-                options={project.tags.map((tag) => ({
-                  id: tag.id,
-                  label: tag.name,
-                }))}
-                value={tagFilter}
-                onChange={setTagFilter}
-                placeholder="Search tags…"
-              />
-            </label>
+          <section className="panel">
+            <div className="panel-header">
+              <h3>Filters</h3>
+            </div>
+            <div className="panel-body space-y-3">
+              <label className="block">
+                <span className="field-label">
+                  Status filter
+                  {statusFilter.length > 0 ? (
+                    <span className="ml-1 text-[var(--color-accent)]">({statusFilter.length})</span>
+                  ) : null}
+                </span>
+                <FuzzyMultiSelect
+                  options={project.lookups.statuses.map((status) => ({
+                    id: status.id,
+                    label: status.value,
+                  }))}
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  placeholder="Search statuses…"
+                />
+              </label>
+              <label className="block">
+                <span className="field-label">
+                  Tag filter
+                  {tagFilter.length > 0 ? (
+                    <span className="ml-1 text-[var(--color-accent)]">({tagFilter.length})</span>
+                  ) : null}
+                </span>
+                <FuzzyMultiSelect
+                  options={project.tags.map((tag) => ({
+                    id: tag.id,
+                    label: tag.name,
+                  }))}
+                  value={tagFilter}
+                  onChange={setTagFilter}
+                  placeholder="Search tags…"
+                />
+              </label>
+            </div>
           </section>
 
           {focusKind === 'source' && (
-            <section className="panel p-3">
-              <div className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.04em] text-[var(--color-ink-muted)]">
-                Source links
+            <section className="panel">
+              <div className="panel-header">
+                <h3>Source links</h3>
               </div>
+              <div className="panel-body">
+                <div className="flex flex-col gap-1.5">
+                  {SOURCE_RELATIONSHIP_TYPES.map((type) => (
+                    <label key={type} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={sourceLinkTypes.includes(type)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSourceLinkTypes([...sourceLinkTypes, type])
+                          else setSourceLinkTypes(sourceLinkTypes.filter((t) => t !== type))
+                        }}
+                      />
+                      {type}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          <section className="panel">
+            <div className="panel-header">
+              <h3>Requirement relationships</h3>
+            </div>
+            <div className="panel-body">
               <div className="flex flex-col gap-1.5">
-                {SOURCE_RELATIONSHIP_TYPES.map((type) => (
+                {RELATIONSHIP_TYPES.map((type) => (
                   <label key={type} className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
-                      checked={sourceLinkTypes.includes(type)}
+                      checked={graphTypes.includes(type)}
                       onChange={(e) => {
-                        if (e.target.checked) setSourceLinkTypes([...sourceLinkTypes, type])
-                        else setSourceLinkTypes(sourceLinkTypes.filter((t) => t !== type))
+                        if (e.target.checked) setGraphTypes([...graphTypes, type])
+                        else setGraphTypes(graphTypes.filter((t) => t !== type))
                       }}
                     />
                     {type}
                   </label>
                 ))}
               </div>
-            </section>
-          )}
-
-          <section className="panel p-3">
-            <div className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.04em] text-[var(--color-ink-muted)]">
-              Requirement relationships
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {RELATIONSHIP_TYPES.map((type) => (
-                <label key={type} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={graphTypes.includes(type)}
-                    onChange={(e) => {
-                      if (e.target.checked) setGraphTypes([...graphTypes, type])
-                      else setGraphTypes(graphTypes.filter((t) => t !== type))
-                    }}
-                  />
-                  {type}
-                </label>
-              ))}
             </div>
           </section>
 
-          <section className="panel p-3 text-sm">
-            <h3 className="mb-2 font-semibold">
-              {focusKind === 'source' ? 'Selected source' : 'Selected requirement'}
-            </h3>
-            {focusedSource ? (
-              <div className="space-y-1">
-                <div className="font-semibold">
-                  {focusedSource.identifier ? `${focusedSource.identifier} — ` : ''}
-                  {focusedSource.title}
+          <section className="panel text-sm">
+            <div className="panel-header">
+              <h3>{focusKind === 'source' ? 'Selected source' : 'Selected requirement'}</h3>
+            </div>
+            <div className="panel-body">
+              {focusedSource ? (
+                <div className="space-y-1">
+                  <div className="font-semibold">
+                    {focusedSource.identifier ? `${focusedSource.identifier} — ` : ''}
+                    {focusedSource.title}
+                  </div>
+                  <div>Type: {focusedSource.sourceType || '—'}</div>
+                  <div>
+                    Linked requirements:{' '}
+                    {countDistinctLinkedRequirements(sourceLinks, focusedSource.id)}
+                  </div>
+                  <Link className="btn btn-secondary mt-2 inline-flex" to={`/sources/${focusedSource.id}`}>
+                    Open detail
+                  </Link>
                 </div>
-                <div>Type: {focusedSource.sourceType || '—'}</div>
-                <div>
-                  Linked requirements:{' '}
-                  {countDistinctLinkedRequirements(sourceLinks, focusedSource.id)}
+              ) : focusedRequirement ? (
+                <div className="space-y-1">
+                  <div className="font-semibold">
+                    {focusedRequirement.sourceId} — {focusedRequirement.shortTitle || 'Untitled'}
+                  </div>
+                  <div>Status: {lookupLabel(project.lookups.statuses, focusedRequirement.statusId)}</div>
+                  <Link
+                    className="btn btn-secondary mt-2 inline-flex"
+                    to={`/requirements/${focusedRequirement.id}`}
+                  >
+                    Open detail
+                  </Link>
                 </div>
-                <Link className="btn btn-secondary mt-2 inline-flex" to={`/sources/${focusedSource.id}`}>
-                  Open detail
-                </Link>
-              </div>
-            ) : focusedRequirement ? (
-              <div className="space-y-1">
-                <div className="font-semibold">
-                  {focusedRequirement.sourceId} — {focusedRequirement.shortTitle || 'Untitled'}
-                </div>
-                <div>Status: {lookupLabel(project.lookups.statuses, focusedRequirement.statusId)}</div>
-                <Link
-                  className="btn btn-secondary mt-2 inline-flex"
-                  to={`/requirements/${focusedRequirement.id}`}
-                >
-                  Open detail
-                </Link>
-              </div>
-            ) : (
-              <p>Nothing selected.</p>
-            )}
+              ) : (
+                <p>Nothing selected.</p>
+              )}
+            </div>
           </section>
 
-          <section className="panel p-3 text-sm">
-            <h3 className="mb-2 font-semibold">Selected relationship</h3>
-            {selectedEdgeObj?.kind === 'relationship' ? (
-              <div className="space-y-1">
-                <div>
-                  {
-                    project.requirements.find(
-                      (r) => r.id === selectedEdgeObj.relationship.sourceRequirementId,
-                    )?.sourceId
-                  }{' '}
-                  →{' '}
-                  {
-                    project.requirements.find(
-                      (r) => r.id === selectedEdgeObj.relationship.targetRequirementId,
-                    )?.sourceId
-                  }
+          <section className="panel text-sm">
+            <div className="panel-header">
+              <h3>Selected relationship</h3>
+            </div>
+            <div className="panel-body">
+              {selectedEdgeObj?.kind === 'relationship' ? (
+                <div className="space-y-1">
+                  <div>
+                    {
+                      project.requirements.find(
+                        (r) => r.id === selectedEdgeObj.relationship.sourceRequirementId,
+                      )?.sourceId
+                    }{' '}
+                    →{' '}
+                    {
+                      project.requirements.find(
+                        (r) => r.id === selectedEdgeObj.relationship.targetRequirementId,
+                      )?.sourceId
+                    }
+                  </div>
+                  <div>
+                    Type: {selectedEdgeObj.relationship.type}
+                    {RECIPROCAL_RELATIONSHIP[selectedEdgeObj.relationship.type]
+                      ? ` (reciprocal display: ${RECIPROCAL_RELATIONSHIP[selectedEdgeObj.relationship.type]})`
+                      : ''}
+                  </div>
+                  <div>Rationale: {selectedEdgeObj.relationship.rationale || '—'}</div>
+                  <div>Notes: {selectedEdgeObj.relationship.notes || '—'}</div>
                 </div>
-                <div>
-                  Type: {selectedEdgeObj.relationship.type}
-                  {RECIPROCAL_RELATIONSHIP[selectedEdgeObj.relationship.type]
-                    ? ` (reciprocal display: ${RECIPROCAL_RELATIONSHIP[selectedEdgeObj.relationship.type]})`
-                    : ''}
+              ) : selectedEdgeObj?.kind === 'source-link' ? (
+                <div className="space-y-1">
+                  <div>
+                    {project.requirements.find((r) => r.id === selectedEdgeObj.link.requirementId)
+                      ?.sourceId || 'Requirement'}{' '}
+                    →{' '}
+                    {sources.find((source) => source.id === selectedEdgeObj.link.sourceId)?.title ||
+                      'Source'}
+                  </div>
+                  <div>Type: {selectedEdgeObj.link.type}</div>
+                  <div>Locator: {selectedEdgeObj.link.locator || '—'}</div>
+                  <div>
+                    Rationale: {selectedEdgeObj.link.rationale?.replace(/<[^>]+>/g, ' ').trim() || '—'}
+                  </div>
+                  <div>Notes: {selectedEdgeObj.link.notes?.replace(/<[^>]+>/g, ' ').trim() || '—'}</div>
                 </div>
-                <div>Rationale: {selectedEdgeObj.relationship.rationale || '—'}</div>
-                <div>Notes: {selectedEdgeObj.relationship.notes || '—'}</div>
-              </div>
-            ) : selectedEdgeObj?.kind === 'source-link' ? (
-              <div className="space-y-1">
-                <div>
-                  {project.requirements.find((r) => r.id === selectedEdgeObj.link.requirementId)
-                    ?.sourceId || 'Requirement'}{' '}
-                  →{' '}
-                  {sources.find((source) => source.id === selectedEdgeObj.link.sourceId)?.title ||
-                    'Source'}
-                </div>
-                <div>Type: {selectedEdgeObj.link.type}</div>
-                <div>Locator: {selectedEdgeObj.link.locator || '—'}</div>
-                <div>
-                  Rationale: {selectedEdgeObj.link.rationale?.replace(/<[^>]+>/g, ' ').trim() || '—'}
-                </div>
-                <div>Notes: {selectedEdgeObj.link.notes?.replace(/<[^>]+>/g, ' ').trim() || '—'}</div>
-              </div>
-            ) : (
-              <p className="text-[var(--color-ink-muted)]">Click an edge to inspect rationale.</p>
-            )}
+              ) : (
+                <p className="text-[var(--color-ink-muted)]">Click an edge to inspect rationale.</p>
+              )}
+            </div>
           </section>
         </aside>
 

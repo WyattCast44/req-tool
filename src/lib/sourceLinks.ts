@@ -1,4 +1,4 @@
-import type { RequirementSourceLink } from '../types/project'
+import type { Requirement, RequirementSourceLink } from '../types/project'
 
 type RequirementSourceIdentity = Pick<RequirementSourceLink, 'requirementId' | 'sourceId'>
 
@@ -19,4 +19,13 @@ export function countDistinctLinkedRequirements(
       .filter((link) => link.sourceId === sourceId)
       .map((link) => link.requirementId),
   ).size
+}
+
+/** Count requirements that list this Source as their primary source document. */
+export function countRequirementsForSource(
+  requirements: readonly Pick<Requirement, 'sourceDocumentId'>[] | undefined,
+  sourceId: string | undefined,
+): number {
+  if (!sourceId) return 0
+  return (requirements ?? []).filter((requirement) => requirement.sourceDocumentId === sourceId).length
 }

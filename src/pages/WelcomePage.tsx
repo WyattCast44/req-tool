@@ -30,7 +30,7 @@ export function WelcomePage() {
   if (!hydrated) {
     return (
       <div className="flex min-h-full items-center justify-center p-8">
-        <p className="text-sm text-[var(--color-ink-muted)]">Loading local workspace…</p>
+        <p className="muted-copy">Loading local workspace…</p>
       </div>
     )
   }
@@ -38,7 +38,7 @@ export function WelcomePage() {
   return (
     <div className="mx-auto flex min-h-full max-w-4xl flex-col justify-center gap-4 px-3 py-8">
       <header className="space-y-1.5">
-        <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+        <p className="eyebrow eyebrow-accent">
           Offline Standalone Application
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)] md:text-3xl">
@@ -52,8 +52,8 @@ export function WelcomePage() {
       </header>
 
       {!project && loadIssues.length > 0 && (
-        <div className="panel border-[var(--color-warn)] bg-[var(--color-warn-bg)] px-5 py-4">
-          <h2 className="font-semibold text-[var(--color-warn)]">Cached workspace not loaded</h2>
+        <div className="panel notice notice-warning">
+          <h2 className="notice-title">Cached workspace not loaded</h2>
           <p className="mt-1 text-sm">
             Browser working storage contains data from an incompatible development schema
             {localSavedAt ? ` saved ${formatDateTime(localSavedAt)}` : ''}. Open a current project
@@ -79,8 +79,8 @@ export function WelcomePage() {
       )}
 
       {project && (recoveryAvailable || hasUnexportedChanges || loadIssues.length > 0) && (
-        <div className="panel border-[var(--color-warn)] bg-[var(--color-warn-bg)] px-5 py-4">
-          <h2 className="font-semibold text-[var(--color-warn)]">Local recovery data available</h2>
+        <div className="panel notice notice-warning">
+          <h2 className="notice-title">Local recovery data available</h2>
           <p className="mt-1 text-sm">
             Browser working storage contains unsaved-export changes
             {localSavedAt ? ` from ${formatDateTime(localSavedAt)}` : ''}. You can continue with the
@@ -120,72 +120,80 @@ export function WelcomePage() {
       )}
 
       <div className="grid gap-2.5 md:grid-cols-2">
-        <section className="panel p-3">
-          <h2 className="page-title">Open Project File</h2>
-          <p className="mt-1 text-[0.78rem] text-[var(--color-ink-muted)]">
-            Select an authoritative {FILE_EXTENSION} save file. The application opens in Review Mode.
-            Try <span className="mono">examples/EaglesNest_Requirements_STRESS_v001_2026-07-26.otreq</span> for a
-            900-requirement stress dataset.
-          </p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".otreq,application/json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (!file) return
-              setBusy(true)
-              void importProjectFile(file).then((result) => {
-                setBusy(false)
-                setMessages(result.messages)
-                if (result.ok) navigate('/')
-                e.target.value = ''
-              })
-            }}
-          />
-          <button
-            type="button"
-            className="btn btn-primary mt-3"
-            disabled={busy}
-            onClick={() => fileRef.current?.click()}
-          >
-            {busy ? 'Validating…' : `Import ${FILE_EXTENSION} File`}
-          </button>
+        <section className="panel">
+          <div className="panel-header">
+            <h2>Open Project File</h2>
+          </div>
+          <div className="panel-body">
+            <p className="muted-copy">
+              Select an authoritative {FILE_EXTENSION} save file. The application opens in Review Mode.
+              Try <span className="mono">examples/Requirements_STRESS_v001_2026-07-26.otreq</span> for a
+              900-requirement stress dataset.
+            </p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".otreq,application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                setBusy(true)
+                void importProjectFile(file).then((result) => {
+                  setBusy(false)
+                  setMessages(result.messages)
+                  if (result.ok) navigate('/')
+                  e.target.value = ''
+                })
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-primary mt-3"
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+            >
+              {busy ? 'Validating…' : `Import ${FILE_EXTENSION} File`}
+            </button>
+          </div>
         </section>
 
-        <section className="panel p-3">
-          <h2 className="page-title">Create New Project</h2>
-          <p className="mt-1 text-[0.78rem] text-[var(--color-ink-muted)]">
-            Start an empty project or load a small in-app demo dataset.
-          </p>
-          <label className="mt-3 block">
-            <span className="field-label">Project name</span>
-            <input
-              className="field-input"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-            />
-          </label>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                void createProject(projectName || 'New Operational Test Project').then(() => navigate('/'))
-              }}
-            >
-              Create Empty Project
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                void createProject('EaglesNest OT Requirements', true).then(() => navigate('/'))
-              }}
-            >
-              Create Sample Project
-            </button>
+        <section className="panel">
+          <div className="panel-header">
+            <h2>Create New Project</h2>
+          </div>
+          <div className="panel-body">
+            <p className="muted-copy">
+              Start an empty project or load a small in-app demo dataset.
+            </p>
+            <label className="mt-3 block">
+              <span className="field-label">Project name</span>
+              <input
+                className="field-input"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+              />
+            </label>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  void createProject(projectName || 'New Operational Test Project').then(() => navigate('/'))
+                }}
+              >
+                Create Empty Project
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  void createProject('EaglesNest OT Requirements', true).then(() => navigate('/'))
+                }}
+              >
+                Create Sample Project
+              </button>
+            </div>
           </div>
         </section>
       </div>

@@ -56,6 +56,7 @@ export function requirementsToCsv(
 ): string {
   const headers = [
     'Source ID',
+    'Source Document',
     'Short Title',
     'Requirement Text',
     'Status',
@@ -66,6 +67,7 @@ export function requirementsToCsv(
     'Source Relationships',
     'Tags',
     'Is Derived',
+    'Linked Watch Items',
     'Verification Methods',
     'Test Activities',
     'Current Assessment',
@@ -101,16 +103,24 @@ export function requirementsToCsv(
       .map((id) => project.evidence.find((e) => e.id === id)?.filePath)
       .filter(Boolean)
       .join('|')
+    const ownedSource = req.sourceDocumentId
+      ? (project.sources ?? []).find((item) => item.id === req.sourceDocumentId)
+      : undefined
     const sourceLinks = (project.requirementSourceLinks ?? []).filter(
       (link) => link.requirementId === req.id,
     )
-    const linkedSources = sourceLinks
-      .map((link) => {
-        const source = (project.sources ?? []).find((item) => item.id === link.sourceId)
-        return source ? source.identifier || source.title : undefined
-      })
-      .filter(Boolean)
-      .join('|')
+    const linkedSources = [
+      ...(ownedSource ? [ownedSource.identifier || ownedSource.title] : []),
+      ...sourceLinks
+        .map((link) => {
+          const source = (project.sources ?? []).find((item) => item.id === link.sourceId)
+          return source ? source.identifier || source.title : undefined
+        })
+        .filter(
+          (label): label is string =>
+            Boolean(label) && label !== (ownedSource?.identifier || ownedSource?.title),
+        ),
+    ].join('|')
     const sourceRelationships = sourceLinks
       .map((link) => {
         const source = (project.sources ?? []).find((item) => item.id === link.sourceId)
@@ -121,6 +131,7 @@ export function requirementsToCsv(
 
     return [
       req.sourceId,
+      ownedSource ? ownedSource.identifier || ownedSource.title : '',
       req.shortTitle,
       plainTextFromHtml(req.requirementText),
       lookupLabel(project.lookups.statuses, req.statusId),
@@ -131,6 +142,10 @@ export function requirementsToCsv(
       sourceRelationships,
       tagNames,
       req.isDerived ? 'Yes' : 'No',
+      project.watchItems
+        .filter((watchItem) => watchItem.requirementIds.includes(req.id))
+        .map((watchItem) => watchItem.title)
+        .join('|'),
       methods,
       activities,
       assessment ? lookupLabel(project.lookups.assessmentResults, assessment.resultId) : '',
@@ -176,4 +191,47 @@ export function matrixToCsv(
     ].map((v) => csvEscape(String(v ?? '')))
   })
   return [headers.map(csvEscape).join(','), ...rows.map((r) => r.join(','))].join('\r\n')
+}
+
+export function watchItemsToCsv(project: ProjectData): string {
+  const headers = [
+    'Title',
+    'Status',
+    'Description',
+    'Observations',
+    'Requirements',
+    'Sources',
+    'Editor',
+    'Created',
+    'Modified',
+    'UUID',
+  ]
+  const rows = project.watchItems.map((watchItem) => [
+    watchItem.title,
+    watchItem.status,
+    plainTextFromHtml(watchItem.description),
+    watchItem.observations
+      .map(
+        (observation) =>
+          `${formatDate(observation.createdAt)} — ${observation.editorName || 'Unknown'}: ${plainTextFromHtml(observation.text)}`,
+      )
+      .join(' | '),
+    watchItem.requirementIds
+      .map((id) => project.requirements.find((requirement) => requirement.id === id)?.sourceId)
+      .filter(Boolean)
+      .join('|'),
+    watchItem.sourceIds
+      .map((id) => {
+        const source = project.sources.find((item) => item.id === id)
+        return source?.identifier || source?.title
+      })
+      .filter(Boolean)
+      .join('|'),
+    watchItem.editorName,
+    formatDate(watchItem.createdAt),
+    formatDate(watchItem.modifiedAt),
+    watchItem.id,
+  ].map((value) => csvEscape(String(value ?? ''))))
+
+  return [headers.map(csvEscape).join(','), ...rows.map((row) => row.join(','))].join('\r\n')
 }

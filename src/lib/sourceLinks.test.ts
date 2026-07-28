@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   countDistinctLinkedRequirements,
+  countRequirementsForSource,
   requirementSourceLinkEndpoints,
 } from './sourceLinks'
 
@@ -27,5 +28,18 @@ describe('requirement-source link helpers', () => {
 
     expect(countDistinctLinkedRequirements(links, 'source-1')).toBe(2)
     expect(countDistinctLinkedRequirements(links, 'source-2')).toBe(1)
+  })
+
+  it('counts requirements that own a source document', () => {
+    const requirements = [
+      { sourceDocumentId: 'source-1' },
+      { sourceDocumentId: 'source-1' },
+      { sourceDocumentId: 'source-2' },
+      { sourceDocumentId: '' },
+    ]
+
+    expect(countRequirementsForSource(requirements, 'source-1')).toBe(2)
+    expect(countRequirementsForSource(requirements, 'source-2')).toBe(1)
+    expect(countRequirementsForSource(requirements, 'source-3')).toBe(0)
   })
 })

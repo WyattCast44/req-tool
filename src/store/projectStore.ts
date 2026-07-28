@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import {
   DEFAULT_COLUMNS,
-  SCHEMA_VERSION,
+  WATCH_ITEM_STATUSES,
   emptyFilters,
   type AssessmentRecord,
   type EvidenceReference,
@@ -21,6 +21,9 @@ import {
   type TagCategory,
   type TestActivity,
   type VerificationRecord,
+  type WatchItem,
+  type WatchItemStatus,
+  type WatchObservation,
 } from '../types/project'
 import { createEmptyProject } from '../lib/defaults'
 import { createSampleProject } from '../lib/sampleProject'
@@ -66,7 +69,19 @@ interface ProjectStore {
     options: { editorName: string; changeSummary: string; isNew: boolean },
   ) => { ok: boolean; errors: string[]; id?: string }
   duplicateRequirement: (id: string, editorName: string) => string | null
-  deleteRequirement: (id: string) => void
+  deleteRequirement: (id: string, editorName?: string) => void
+
+  upsertWatchItem: (
+    input: Omit<Partial<WatchItem>, 'observations'> & {
+      title: string
+      status: WatchItemStatus
+      observations: Array<Partial<WatchObservation> & { text: string }>
+      requirementIds: string[]
+      sourceIds: string[]
+    },
+    editorName: string,
+  ) => { ok: boolean; error?: string; id?: string }
+  deleteWatchItem: (id: string) => void
 
   upsertRelationship: (
     input: Omit<RequirementRelationship, 'id' | 'createdAt' | 'modifiedAt'> & { id?: string },
@@ -74,7 +89,7 @@ interface ProjectStore {
   deleteRelationship: (id: string) => void
 
   upsertSource: (input: Partial<Source> & { title: string; id?: string }, editorName: string) => { ok: boolean; error?: string; id?: string }
-  deleteSource: (id: string) => void
+  deleteSource: (id: string, editorName?: string) => void
   upsertRequirementSourceLink: (
     input: Partial<RequirementSourceLink> & {
       requirementId: string
@@ -169,12 +184,38 @@ function touchProject(project: ProjectData): ProjectData {
 function sanitizeReq(req: Requirement): Requirement {
   return {
     ...req,
+    sourceDocumentId: req.sourceDocumentId?.trim() || '',
     requirementText: ensureLinkSafety(req.requirementText || ''),
     description: ensureLinkSafety(req.description || ''),
     analystNotes: ensureLinkSafety(req.analystNotes || ''),
     rationale: ensureLinkSafety(req.rationale || ''),
     verificationNotes: ensureLinkSafety(req.verificationNotes || ''),
   }
+}
+
+function normalizeWatchObservations(
+  observations: Array<Partial<WatchObservation> & { text: string }>,
+  existing: WatchObservation[],
+  timestamp: string,
+  editorName: string,
+): WatchObservation[] {
+  const existingById = new Map(existing.map((observation) => [observation.id, observation]))
+  return observations
+    .filter((observation) =>
+      observation.text.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim(),
+    )
+    .map((observation) => {
+      const prior = observation.id ? existingById.get(observation.id) : undefined
+      const text = ensureLinkSafety(observation.text)
+      const unchanged = prior?.text === text
+      return {
+        id: prior?.id || newId(),
+        text,
+        createdAt: prior?.createdAt || timestamp,
+        modifiedAt: unchanged ? prior?.modifiedAt || timestamp : timestamp,
+        editorName: unchanged ? prior?.editorName || editorName : editorName,
+      }
+    })
 }
 
 export const useProjectStore = create<ProjectStore>((set, get) => ({
@@ -202,7 +243,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   hydrate: async () => {
     const existing = await getActiveWorkspace()
     if (existing) {
-      if (existing.project.schemaVersion !== SCHEMA_VERSION) {
+      const validation = parseAndValidateProject(JSON.stringify(existing.project))
+      if (!validation.ok || !validation.project) {
         set({
           project: null,
           mode: 'review',
@@ -212,22 +254,26 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
           recoveryAvailable: false,
           hydrated: true,
           loadIssues: [
-            `Cached workspace uses unsupported schema version ${existing.project.schemaVersion}. Expected v${SCHEMA_VERSION}. The cached data was not loaded or deleted.`,
+            ...validation.issues.map((issue) => `Cached workspace: ${issue.message}`),
+            'The cached data was not loaded or deleted.',
           ],
         })
         return
       }
       set({
-        project: existing.project,
+        project: validation.project,
         mode: 'review',
         hasUnexportedChanges: existing.hasUnexportedChanges,
         localSavedAt: existing.localSavedAt,
         sourceFileName: existing.sourceFileName,
         recoveryAvailable: existing.hasUnexportedChanges,
         hydrated: true,
-        loadIssues: existing.hasUnexportedChanges
-          ? ['Local working changes were recovered from browser storage. Export when ready, or discard and load the authoritative file.']
-          : [],
+        loadIssues: [
+          ...(existing.hasUnexportedChanges
+            ? ['Local working changes were recovered from browser storage. Export when ready, or discard and load the authoritative file.']
+            : []),
+          ...validation.issues.map((issue) => issue.message),
+        ],
       })
     } else {
       set({ hydrated: true })
@@ -375,6 +421,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const req = sanitizeReq({
         id: newId(),
         sourceId: input.sourceId.trim(),
+        sourceDocumentId: input.sourceDocumentId?.trim() || '',
         shortTitle: input.shortTitle || '',
         requirementText: input.requirementText,
         statusId: input.statusId,
@@ -409,6 +456,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       ...input,
       id: existing.id,
       sourceId: input.sourceId.trim(),
+      sourceDocumentId:
+        input.sourceDocumentId !== undefined
+          ? input.sourceDocumentId.trim()
+          : existing.sourceDocumentId || '',
       modifiedAt: ts,
       editorName: options.editorName.trim(),
       changeSummary: options.changeSummary.trim(),
@@ -452,9 +503,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     return copy.id
   },
 
-  deleteRequirement: (id) => {
+  deleteRequirement: (id, editorName) => {
     const project = get().project
     if (!project || get().mode !== 'edit') return
+    const timestamp = nowIso()
+    const cascadeEditor = editorName?.trim() || project.metadata.editorNameDefault || ''
     const cleaned: ProjectData = {
       ...project,
       requirements: project.requirements.filter((r) => r.id !== id),
@@ -465,9 +518,92 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       requirementActivityLinks: project.requirementActivityLinks.filter((l) => l.requirementId !== id),
       verifications: project.verifications.filter((v) => v.requirementId !== id),
       assessments: project.assessments.filter((a) => a.requirementId !== id),
+      watchItems: project.watchItems.map((watchItem) =>
+        watchItem.requirementIds.includes(id)
+          ? {
+              ...watchItem,
+              requirementIds: watchItem.requirementIds.filter((requirementId) => requirementId !== id),
+              modifiedAt: timestamp,
+              editorName: cascadeEditor || watchItem.editorName,
+            }
+          : watchItem,
+      ),
     }
     set({
       project: touchProject(cleaned),
+      hasUnexportedChanges: true,
+      lastExportNotice: false,
+    })
+    schedulePersist(get, set)
+  },
+
+  upsertWatchItem: (input, editorName) => {
+    const project = get().project
+    if (!project || get().mode !== 'edit') return { ok: false, error: 'Edit Mode required.' }
+    if (!input.title.trim()) return { ok: false, error: 'Watch item title is required.' }
+    if (!WATCH_ITEM_STATUSES.includes(input.status)) {
+      return { ok: false, error: 'Watch item status is invalid.' }
+    }
+    if (
+      !input.observations.some((observation) =>
+        observation.text.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim(),
+      )
+    ) {
+      return { ok: false, error: 'At least one observation is required.' }
+    }
+
+    const requirementIds = [...new Set(input.requirementIds)].filter((id) =>
+      project.requirements.some((requirement) => requirement.id === id),
+    )
+    const sourceIds = [...new Set(input.sourceIds)].filter((id) =>
+      project.sources.some((source) => source.id === id),
+    )
+    const timestamp = nowIso()
+    const existing = input.id
+      ? project.watchItems.find((watchItem) => watchItem.id === input.id)
+      : undefined
+    if (input.id && !existing) return { ok: false, error: 'Watch item not found.' }
+
+    const resolvedEditor = editorName || project.metadata.editorNameDefault || existing?.editorName || ''
+    const watchItem: WatchItem = {
+      id: existing?.id || newId(),
+      title: input.title.trim(),
+      description: ensureLinkSafety(input.description || ''),
+      status: input.status,
+      observations: normalizeWatchObservations(
+        input.observations,
+        existing?.observations || [],
+        timestamp,
+        resolvedEditor,
+      ),
+      requirementIds,
+      sourceIds,
+      createdAt: existing?.createdAt || timestamp,
+      modifiedAt: timestamp,
+      editorName: resolvedEditor,
+    }
+    set({
+      project: touchProject({
+        ...project,
+        watchItems: existing
+          ? project.watchItems.map((item) => (item.id === watchItem.id ? watchItem : item))
+          : [...project.watchItems, watchItem],
+      }),
+      hasUnexportedChanges: true,
+      lastExportNotice: false,
+    })
+    schedulePersist(get, set)
+    return { ok: true, id: watchItem.id }
+  },
+
+  deleteWatchItem: (id) => {
+    const project = get().project
+    if (!project || get().mode !== 'edit') return
+    set({
+      project: touchProject({
+        ...project,
+        watchItems: project.watchItems.filter((watchItem) => watchItem.id !== id),
+      }),
       hasUnexportedChanges: true,
       lastExportNotice: false,
     })
@@ -600,14 +736,39 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     return { ok: true, id: created.id }
   },
 
-  deleteSource: (id) => {
+  deleteSource: (id, editorName) => {
     const project = get().project
     if (!project || get().mode !== 'edit') return
+    const timestamp = nowIso()
+    const cascadeEditor = editorName?.trim() || project.metadata.editorNameDefault || ''
+    const deletedSource = project.sources.find((source) => source.id === id)
+    const sourceLabel = deletedSource?.identifier || deletedSource?.title || id
     set({
       project: touchProject({
         ...project,
         sources: (project.sources ?? []).filter((source) => source.id !== id),
+        requirements: project.requirements.map((requirement) =>
+          requirement.sourceDocumentId === id
+            ? {
+                ...requirement,
+                sourceDocumentId: '',
+                modifiedAt: timestamp,
+                editorName: cascadeEditor || requirement.editorName,
+                changeSummary: `Source document cleared after deleting ${sourceLabel}.`,
+              }
+            : requirement,
+        ),
         requirementSourceLinks: (project.requirementSourceLinks ?? []).filter((link) => link.sourceId !== id),
+        watchItems: project.watchItems.map((watchItem) =>
+          watchItem.sourceIds.includes(id)
+            ? {
+                ...watchItem,
+                sourceIds: watchItem.sourceIds.filter((sourceId) => sourceId !== id),
+                modifiedAt: timestamp,
+                editorName: cascadeEditor || watchItem.editorName,
+              }
+            : watchItem,
+        ),
       }),
       hasUnexportedChanges: true,
       lastExportNotice: false,

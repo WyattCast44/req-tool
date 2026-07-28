@@ -5,6 +5,7 @@ import { FilterPanel } from '../components/FilterPanel'
 import { AssessmentBadge, ClassificationBadge, StatusBadge } from '../components/StatusBadge'
 import { EmptyState } from '../components/EmptyState'
 import { DataTable } from '../components/DataTable'
+import { PageHeader } from '../components/PageHeader'
 import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { useProjectStore } from '../store/projectStore'
 import { currentAssessment, filterRequirements } from '../lib/filters'
@@ -66,13 +67,21 @@ function toRows(project: ProjectData, requirements: Requirement[]): RequirementR
       .map((id) => project.tags.find((t) => t.id === id)?.name)
       .filter(Boolean)
       .join(', ')
+    const ownedSource = req.sourceDocumentId
+      ? indexes.sourceById.get(req.sourceDocumentId)
+      : undefined
     const linkedSources = (indexes.sourceLinksByReq.get(req.id) || [])
       .map((link) => {
         const source = indexes.sourceById.get(link.sourceId)
         return source?.identifier || source?.title
       })
       .filter(Boolean)
-      .join(', ')
+    const sourceLabels = [
+      ...(ownedSource ? [ownedSource.identifier || ownedSource.title] : []),
+      ...linkedSources.filter(
+        (label) => label && label !== (ownedSource?.identifier || ownedSource?.title),
+      ),
+    ]
     return {
       id: req.id,
       sourceId: req.sourceId,
@@ -84,7 +93,7 @@ function toRows(project: ProjectData, requirements: Requirement[]): RequirementR
       assessment: assessmentLabel,
       verification: methods,
       tags,
-      sources: linkedSources,
+      sources: sourceLabels.join(', '),
       modifiedAt: formatDateTime(req.modifiedAt),
       modifiedAtRaw: req.modifiedAt,
       editorName: req.editorName || '',
@@ -293,7 +302,7 @@ export function RequirementsPage() {
           <div className="flex flex-wrap gap-1">
             <button
               type="button"
-              className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem]"
+              className="btn btn-ghost btn-sm"
               onClick={() => {
                 const id = duplicateRequirement(row.original.id, project.metadata.editorNameDefault)
                 if (id) navigate(`/requirements/${id}${requirementDetailSuffix}`)
@@ -303,7 +312,7 @@ export function RequirementsPage() {
             </button>
             <button
               type="button"
-              className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem] text-[var(--color-danger)]"
+              className="btn btn-ghost btn-sm btn-ghost-danger"
               onClick={() => setDeleteId(row.original.id)}
             >
               Delete
@@ -342,19 +351,19 @@ export function RequirementsPage() {
 
   return (
     <div className="space-y-2">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Requirements</h2>
-          <p className="page-subtitle">
+      <PageHeader
+        title="Requirements"
+        subtitle={
+          <>
             Showing {filteredRequirements.length} of {project.requirements.length}
             {filteredRequirements.length !== project.requirements.length
               ? ' · filters or search are narrowing this list'
               : ''}
             {searchQuery ? ` · search “${searchQuery}”` : ''}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {mode === 'edit' && (
+          </>
+        }
+        actions={
+          mode === 'edit' ? (
             <>
               <button
                 type="button"
@@ -383,9 +392,9 @@ export function RequirementsPage() {
                 New Requirement
               </button>
             </>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       <FilterPanel />
 
@@ -496,7 +505,7 @@ export function RequirementsPage() {
             setSelectedRequirementIds(
               validSelectedRequirementIds.filter((id) => id !== deleteId),
             )
-            deleteRequirement(deleteId)
+            deleteRequirement(deleteId, project.metadata.editorNameDefault)
           }
           setDeleteId(null)
         }}

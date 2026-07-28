@@ -14,7 +14,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { clampPageIndex, useTableUrlState } from '../lib/urlState'
 
 export type { ColumnDef, VisibilityState, SortingState }
@@ -91,6 +91,7 @@ export function DataTable<T>({
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
   const [columnsOpen, setColumnsOpen] = useState(false)
   const [showColumnFilters, setShowColumnFilters] = useState(false)
+  const columnsMenuRef = useRef<HTMLDivElement>(null)
   const urlDefaults = useMemo(
     () => ({
       pageSize,
@@ -195,6 +196,17 @@ export function DataTable<T>({
     [table],
   )
 
+  useEffect(() => {
+    if (!columnsOpen) return
+    const onDocMouseDown = (event: MouseEvent) => {
+      if (!columnsMenuRef.current?.contains(event.target as Node)) {
+        setColumnsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [columnsOpen])
+
   const filteredCount = table.getFilteredRowModel().rows.length
   const pageCount = table.getPageCount()
   const pageIndex = table.getState().pagination.pageIndex
@@ -241,9 +253,38 @@ export function DataTable<T>({
             </button>
           )}
           {enableColumnVisibility && (
-            <button type="button" className="btn btn-secondary" onClick={() => setColumnsOpen((v) => !v)}>
-              Columns
-            </button>
+            <div ref={columnsMenuRef} className="relative">
+              <button
+                type="button"
+                className={`btn ${columnsOpen ? 'btn-primary' : 'btn-secondary'}`}
+                aria-expanded={columnsOpen}
+                aria-haspopup="listbox"
+                onClick={() => setColumnsOpen((open) => !open)}
+              >
+                Columns
+              </button>
+              {columnsOpen && (
+                <div className="columns-menu" role="listbox" aria-label="Visible columns" aria-multiselectable="true">
+                  {hideableColumns.map((column) => {
+                    const label =
+                      typeof column.columnDef.header === 'string'
+                        ? column.columnDef.header
+                        : column.id
+                    const visible = column.getIsVisible()
+                    return (
+                      <label key={column.id} className="columns-menu-item">
+                        <input
+                          type="checkbox"
+                          checked={visible}
+                          onChange={column.getToggleVisibilityHandler()}
+                        />
+                        <span className="truncate">{label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           )}
           <button
             type="button"
@@ -267,25 +308,10 @@ export function DataTable<T>({
         </div>
       </div>
 
-      {enableColumnVisibility && columnsOpen && (
-        <div className="panel grid gap-1.5 p-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-          {hideableColumns.map((column) => (
-            <label key={column.id} className="flex items-center gap-1.5 text-[0.75rem]">
-              <input
-                type="checkbox"
-                checked={column.getIsVisible()}
-                onChange={column.getToggleVisibilityHandler()}
-              />
-              {typeof column.columnDef.header === 'string'
-                ? column.columnDef.header
-                : column.id}
-            </label>
-          ))}
-        </div>
-      )}
-
       {filteredCount === 0 ? (
-        <div className="panel px-3 py-6 text-[0.78rem] text-[var(--color-ink-muted)]">{emptyMessage}</div>
+        <div className="panel empty-state">
+          <p className="empty-copy">{emptyMessage}</p>
+        </div>
       ) : (
         <>
           <div className={`table-wrap ${maxHeightClassName}`}>

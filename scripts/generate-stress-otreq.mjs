@@ -113,7 +113,6 @@ const tagDefs = [
   ['Critical Risk', 3],
   ['High Risk', 3],
   ['Medium Risk', 3],
-  ['Watch Item', 3],
 ]
 
 const tags = tagDefs.map(([name, catIndex], i) => ({
@@ -221,6 +220,7 @@ for (let i = 0; i < REQ_COUNT; i += 1) {
   const req = {
     id: id(n),
     sourceId: `SRD-${String(sourceNum).padStart(4, '0')}`,
+    sourceDocumentId: id(950001),
     shortTitle: `${subsystem}: ${verb} ${noun}`,
     requirementText: `<p>The system <strong>shall</strong> ${verb} ${noun} for ${subsystem.toLowerCase()} operations under OT conditions.</p><p>Threshold and measurement details are defined in SRD section ${3 + (i % 7)}.${1 + (i % 9)}.</p>`,
     statusId: statusId[status],
@@ -396,6 +396,50 @@ for (let i = 0; i < REQ_COUNT; i += 1) {
 // A few requirements intentionally have no relationships (~10% already likely)
 // Ensure at least some active with no method/activity remain via generation probabilities.
 
+const watchItems = Array.from({ length: 64 }, (_, i) => {
+  const primary = requirements[(i * 13) % requirements.length]
+  const secondary = requirements[(i * 29 + 7) % requirements.length]
+  const requirementIds =
+    i % 6 === 0
+      ? []
+      : i % 3 === 0
+        ? [primary.id, secondary.id]
+        : [primary.id]
+  const createdAt = isoDaysAgo(baseTs, 30 - (i % 20), 990000 + i)
+  const modifiedAt = isoDaysAgo(baseTs, 8 - (i % 7), 990100 + i)
+  return {
+    id: id(970000 + i),
+    title: `${pick(subsystems, 970000 + i)} ${pick(nouns, 970100 + i)} watch`,
+    description: `<p>Monitor emerging ${pick(nouns, 970200 + i)} behavior across planned operational scenarios.</p>`,
+    status: pick(['Open', 'Monitoring', 'Resolved', 'Closed'], 970300 + i),
+    observations: [
+      {
+        id: id(971000 + i * 3),
+        text: '<p>Initial observation recorded during requirements and test-planning review.</p>',
+        createdAt,
+        modifiedAt: createdAt,
+        editorName: pick(editors, 970400 + i),
+      },
+      ...(i % 4 === 0
+        ? [
+            {
+              id: id(971001 + i * 3),
+              text: '<p>Follow-up indicates the item should remain under active monitoring.</p>',
+              createdAt: modifiedAt,
+              modifiedAt,
+              editorName: pick(editors, 970500 + i),
+            },
+          ]
+        : []),
+    ],
+    requirementIds,
+    sourceIds: i % 5 === 0 ? [] : [id(950001)],
+    createdAt,
+    modifiedAt,
+    editorName: pick(editors, 970600 + i),
+  }
+})
+
 const project = {
   formatId: 'otreq-project',
   schemaVersion: 2,
@@ -431,6 +475,7 @@ const project = {
   tagCategories: categories,
   tags,
   requirements,
+  watchItems,
   relationships,
   sources: [
     {
@@ -554,7 +599,7 @@ const project = {
 
 const outDir = join(root, 'examples')
 mkdirSync(outDir, { recursive: true })
-const filename = 'EaglesNest_Requirements_STRESS_v001_2026-07-26.otreq'
+const filename = 'Requirements_STRESS_v001_2026-07-26.otreq'
 const outPath = join(outDir, filename)
 writeFileSync(outPath, JSON.stringify(project))
 const bytes = Buffer.byteLength(JSON.stringify(project))

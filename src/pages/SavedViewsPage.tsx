@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useProjectStore } from '../store/projectStore'
 import { EmptyState } from '../components/EmptyState'
+import { PageHeader } from '../components/PageHeader'
 import { ConfirmDialog } from '../components/Modal'
 import { DataTable } from '../components/DataTable'
 import { fuzzyIncludesFilter } from '../lib/tableFilters'
@@ -89,7 +90,7 @@ export function SavedViewsPage() {
               <>
                 <button
                   type="button"
-                  className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem]"
+                  className="btn btn-ghost btn-sm"
                   onClick={() => {
                     const name = window.prompt('Rename view', row.original.name)
                     if (!name?.trim()) return
@@ -100,7 +101,7 @@ export function SavedViewsPage() {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem] text-[var(--color-danger)]"
+                  className="btn btn-ghost btn-sm btn-ghost-danger"
                   onClick={() => setDeleteId(row.original.id)}
                 >
                   Delete
@@ -120,14 +121,10 @@ export function SavedViewsPage() {
 
   return (
     <div className="space-y-2.5">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Saved Views</h2>
-          <p className="page-subtitle">
-            Named filter configurations stored in the project save file and shared with all users of that file.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Saved Views"
+        subtitle="Named filter configurations stored in the project save file and shared with all users of that file."
+      />
 
       {project.savedViews.length === 0 ? (
         <EmptyState title="No saved views" body="Create a saved view from the Requirements filters while in Edit Mode." />

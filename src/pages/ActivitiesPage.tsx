@@ -5,6 +5,8 @@ import { RichTextEditor, RichTextView } from '../components/RichText'
 import { ConfirmDialog, Modal } from '../components/Modal'
 import { DataTable } from '../components/DataTable'
 import { RequirementHoverLink } from '../components/RequirementHoverLink'
+import { PageHeader } from '../components/PageHeader'
+import { groupBy, indexById } from '../lib/collections'
 import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { lookupLabel } from '../lib/defaults'
 import { formatDate } from '../lib/ids'
@@ -49,6 +51,18 @@ export function ActivitiesPage() {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Partial<TestActivity> & { title: string }>(blank())
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const requirementsById = useMemo(
+    () => indexById(project.requirements),
+    [project.requirements],
+  )
+  const linksByActivityId = useMemo(
+    () =>
+      groupBy(
+        project.requirementActivityLinks,
+        (link) => link.testActivityId,
+      ),
+    [project.requirementActivityLinks],
+  )
 
   const openCreate = () => {
     setDraft({
@@ -68,12 +82,12 @@ export function ActivitiesPage() {
   const rows = useMemo<ActivityRow[]>(
     () =>
       project.testActivities.map((activity) => {
-        const links = project.requirementActivityLinks.filter((l) => l.testActivityId === activity.id)
+        const links = linksByActivityId.get(activity.id) ?? []
         const linkedIds = links
-          .map((link) => project.requirements.find((r) => r.id === link.requirementId)?.id)
+          .map((link) => requirementsById.get(link.requirementId)?.id)
           .filter(Boolean) as string[]
         const linkedLabels = links
-          .map((link) => project.requirements.find((r) => r.id === link.requirementId)?.sourceId)
+          .map((link) => requirementsById.get(link.requirementId)?.sourceId)
           .filter(Boolean)
           .join(', ')
         return {
@@ -89,7 +103,7 @@ export function ActivitiesPage() {
           activity,
         }
       }),
-    [project],
+    [linksByActivityId, project.lookups, project.testActivities, requirementsById],
   )
 
   const columns = useMemo<ColumnDef<ActivityRow>[]>(() => {
@@ -140,7 +154,7 @@ export function ActivitiesPage() {
           return (
             <div className="flex flex-wrap gap-1">
               {row.original.linkedIds.map((reqId) => {
-                const requirement = project.requirements.find((item) => item.id === reqId)
+                const requirement = requirementsById.get(reqId)
                 if (!requirement) {
                   return (
                     <span key={reqId} className="mono text-[var(--color-ink-muted)]">
@@ -166,12 +180,12 @@ export function ActivitiesPage() {
         header: 'Actions',
         cell: ({ row }) => (
           <div className="flex gap-1">
-            <button type="button" className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem]" onClick={() => openEdit(row.original.activity)}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEdit(row.original.activity)}>
               Edit
             </button>
             <button
               type="button"
-              className="btn btn-ghost px-1.5 py-0.5 text-[0.68rem] text-[var(--color-danger)]"
+              className="btn btn-ghost btn-sm btn-ghost-danger"
               onClick={() => setDeleteId(row.original.id)}
             >
               Delete
@@ -186,21 +200,21 @@ export function ActivitiesPage() {
     }
 
     return defs
-  }, [editing, project])
+  }, [editing, project, requirementsById])
 
   return (
     <div className="space-y-2.5">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Test Activities</h2>
-          <p className="page-subtitle">Reusable activities that can be linked to multiple requirements.</p>
-        </div>
-        {editing && (
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            New Test Activity
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Test Activities"
+        subtitle="Reusable activities that can be linked to multiple requirements."
+        actions={
+          editing ? (
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              New Test Activity
+            </button>
+          ) : undefined
+        }
+      />
 
       {project.testActivities.length === 0 ? (
         <EmptyState

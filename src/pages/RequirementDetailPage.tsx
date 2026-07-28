@@ -1,22 +1,37 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useProjectStore } from '../store/projectStore'
+import {
+  DetailField as Field,
+  DetailNotFound,
+  DetailSection as Section,
+  RichTextOrEmpty,
+  SummaryRow as SummaryValue,
+} from '../components/DetailPrimitives'
 import { RichTextEditor, RichTextView } from '../components/RichText'
-import { AssessmentBadge, ClassificationBadge, StatusBadge } from '../components/StatusBadge'
+import {
+  AssessmentBadge,
+  ClassificationBadge,
+  StatusBadge,
+  WatchBadge,
+  WatchItemStatusBadge,
+} from '../components/StatusBadge'
 import { ConfirmDialog, Modal } from '../components/Modal'
 import { DataTable } from '../components/DataTable'
 import { FuzzySelect } from '../components/FuzzySelect'
 import { lookupLabel } from '../lib/defaults'
-import { formatDateTime, slugifyFilename } from '../lib/ids'
+import { formatDateTime, slugifyFilename, suggestNextRequirementSourceId } from '../lib/ids'
 import { fuzzyIncludesFilter, plainTextFromHtml } from '../lib/tableFilters'
 import {
   RECIPROCAL_RELATIONSHIP,
   RELATIONSHIP_TYPES,
+  SOURCE_RELATIONSHIP_TYPES,
   type RelationshipType,
   type Requirement,
   type RequirementRelationship,
+  type RequirementSourceLink,
+  type SourceRelationshipType,
   type Tag,
   type TagCategory,
 } from '../types/project'
@@ -27,7 +42,6 @@ import {
   RequirementSourceLinkModal,
   type RequirementSourceLinkDraft,
 } from '../components/RequirementSourceLinkModal'
-import type { RequirementSourceLink } from '../types/project'
 
 type RequirementTab = 'overview' | 'traceability' | 'verification'
 
@@ -57,6 +71,7 @@ interface SourceLinkRow {
 function emptyReq(projectDefaults: { statusId: string; classificationId: string }): Partial<Requirement> {
   return {
     sourceId: '',
+    sourceDocumentId: '',
     shortTitle: '',
     requirementText: '',
     statusId: projectDefaults.statusId,
@@ -137,6 +152,9 @@ export function RequirementDetailPage() {
   const [relOpen, setRelOpen] = useState(false)
   const [sourceLinkOpen, setSourceLinkOpen] = useState(false)
   const [editingSourceLink, setEditingSourceLink] = useState<RequirementSourceLink | null>(null)
+  const [createSourceLinkType, setCreateSourceLinkType] = useState<SourceRelationshipType>('Cites')
+  const [createSourceLocator, setCreateSourceLocator] = useState('')
+  const [sourceIdTouched, setSourceIdTouched] = useState(false)
   const [wordExportStatus, setWordExportStatus] = useState('')
   const [relDraft, setRelDraft] = useState({
     targetRequirementId: '',
@@ -145,15 +163,88 @@ export function RequirementDetailPage() {
     notes: '',
   })
 
+  const presetSourceDocumentId = searchParams.get('source') || ''
+
+  const sourcesRef = useRef(project.sources)
+  const requirementsRef = useRef(project.requirements)
+  sourcesRef.current = project.sources
+  requirementsRef.current = project.requirements
+
   useEffect(() => {
     if (existing) {
-      setForm(existing)
+      setForm({ ...existing, sourceDocumentId: existing.sourceDocumentId || '' })
       setEditorName(project.metadata.editorNameDefault || existing.editorName || '')
       setChangeSummary('')
-    } else if (isNew) {
-      setForm(emptyReq({ statusId: defaultStatus, classificationId: defaultClass }))
+      return
     }
-  }, [existing, isNew, defaultStatus, defaultClass, project.metadata.editorNameDefault])
+    if (!isNew) return
+
+    const sources = sourcesRef.current ?? []
+    const requirements = requirementsRef.current
+    const blank = emptyReq({ statusId: defaultStatus, classificationId: defaultClass })
+    const sourceDocumentId =
+      presetSourceDocumentId && sources.some((source) => source.id === presetSourceDocumentId)
+        ? presetSourceDocumentId
+        : ''
+    let sourceId = ''
+    if (sourceDocumentId) {
+      const selectedSource = sources.find((source) => source.id === sourceDocumentId)
+      const ownedIds = requirements
+        .filter((requirement) => requirement.sourceDocumentId === sourceDocumentId)
+        .map((requirement) => requirement.sourceId)
+      const existingIds =
+        ownedIds.length > 0 ? ownedIds : requirements.map((requirement) => requirement.sourceId)
+      sourceId = suggestNextRequirementSourceId(
+        existingIds,
+        selectedSource?.identifier || null,
+      )
+    }
+    setForm({ ...blank, sourceDocumentId, sourceId })
+    setCreateSourceLinkType('Cites')
+    setCreateSourceLocator('')
+    setSourceIdTouched(false)
+    setEditorName(project.metadata.editorNameDefault || '')
+    setChangeSummary('')
+  }, [existing, isNew, defaultStatus, defaultClass, presetSourceDocumentId, project.metadata.editorNameDefault])
+
+  const sourceDocumentOptions = useMemo(
+    () =>
+      (project.sources ?? [])
+        .map((source) => ({
+          id: source.id,
+          label: `${source.identifier ? `${source.identifier} — ` : ''}${source.title}`,
+          keywords: [source.sourceType, source.publisher, source.version].filter(Boolean).join(' '),
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [project.sources],
+  )
+
+  const selectedSourceDocument = useMemo(
+    () => (project.sources ?? []).find((source) => source.id === form.sourceDocumentId) || null,
+    [form.sourceDocumentId, project.sources],
+  )
+
+  const applySuggestedSourceId = (sourceDocumentId: string) => {
+    if (sourceIdTouched) return
+    const selectedSource = (project.sources ?? []).find((source) => source.id === sourceDocumentId)
+    const ownedIds = project.requirements
+      .filter((requirement) => requirement.sourceDocumentId === sourceDocumentId)
+      .map((requirement) => requirement.sourceId)
+    const existingIds =
+      ownedIds.length > 0
+        ? ownedIds
+        : project.requirements.map((requirement) => requirement.sourceId)
+    setForm((prev) => ({
+      ...prev,
+      sourceId: suggestNextRequirementSourceId(existingIds, selectedSource?.identifier || null),
+    }))
+  }
+
+  const handleSourceDocumentChange = (sourceDocumentId: string) => {
+    setForm((prev) => ({ ...prev, sourceDocumentId }))
+    if (!sourceDocumentId) return
+    if (isNew) applySuggestedSourceId(sourceDocumentId)
+  }
 
   const reqId = existing?.id
   const relationships = useMemo(
@@ -183,6 +274,10 @@ export function RequirementDetailPage() {
     [project.assessments, reqId],
   )
   const current = reqId ? currentAssessment(project, reqId) : undefined
+  const linkedWatchItems = useMemo(
+    () => project.watchItems.filter((watchItem) => reqId && watchItem.requirementIds.includes(reqId)),
+    [project.watchItems, reqId],
+  )
 
   const relationshipRows = useMemo<RelationshipRow[]>(
     () =>
@@ -263,7 +358,7 @@ export function RequirementDetailPage() {
         cell: ({ row }) => (
           <button
             type="button"
-            className="btn btn-ghost px-2 py-1 text-xs text-[var(--color-danger)]"
+            className="btn btn-ghost btn-sm btn-ghost-danger"
             onClick={() => deleteRelationship(row.original.id)}
           >
             Remove
@@ -355,7 +450,7 @@ export function RequirementDetailPage() {
           <div className="flex gap-1">
             <button
               type="button"
-              className="btn btn-ghost px-1.5 py-0.5 text-xs"
+              className="btn btn-ghost btn-sm"
               onClick={() => {
                 setEditingSourceLink(row.original.link)
                 setSourceLinkOpen(true)
@@ -365,7 +460,7 @@ export function RequirementDetailPage() {
             </button>
             <button
               type="button"
-              className="btn btn-ghost px-1.5 py-0.5 text-xs text-[var(--color-danger)]"
+              className="btn btn-ghost btn-sm btn-ghost-danger"
               onClick={() => deleteRequirementSourceLink(row.original.id)}
             >
               Unlink
@@ -384,21 +479,22 @@ export function RequirementDetailPage() {
 
   if (!isNew && !existing) {
     return (
-      <div className="panel p-6">
-        <p>Requirement not found.</p>
-        <Link className="btn btn-secondary mt-3" to={requirementListHref}>
-          Back to list
-        </Link>
-      </div>
+      <DetailNotFound
+        message="Requirement not found."
+        backTo={requirementListHref}
+        backLabel="Back to list"
+      />
     )
   }
 
   const save = () => {
+    const sourceDocumentId = form.sourceDocumentId?.trim() || ''
     const result = upsertRequirement(
       {
         ...form,
         id: existing?.id,
         sourceId: form.sourceId || '',
+        sourceDocumentId,
         requirementText: form.requirementText || '',
         statusId: form.statusId || '',
         classificationId: form.classificationId || '',
@@ -411,6 +507,38 @@ export function RequirementDetailPage() {
     )
     setErrors(result.errors)
     if (result.ok && result.id) {
+      if (sourceDocumentId) {
+        const alreadyLinked = (project.requirementSourceLinks ?? []).some(
+          (link) => link.requirementId === result.id && link.sourceId === sourceDocumentId,
+        )
+        if (!alreadyLinked) {
+          const linkResult = upsertRequirementSourceLink(
+            {
+              requirementId: result.id,
+              sourceId: sourceDocumentId,
+              type: isNew ? createSourceLinkType : 'Cites',
+              locator: isNew ? createSourceLocator : '',
+              rationale: '',
+              notes: '',
+            },
+            editorName || project.metadata.editorNameDefault || '',
+          )
+          if (!linkResult.ok) {
+            setToast(
+              result.ok
+                ? 'Requirement saved, but the source citation could not be created.'
+                : linkResult.error || 'Could not save source citation.',
+            )
+            navigate(`/requirements/${result.id}${requirementDetailSuffix}`, { replace: true })
+            return
+          }
+          if (linkResult.warning) {
+            setToast(linkResult.warning)
+            navigate(`/requirements/${result.id}${requirementDetailSuffix}`, { replace: true })
+            return
+          }
+        }
+      }
       setToast(isNew ? 'Requirement created (local autosave).' : 'Requirement updated (local autosave).')
       navigate(`/requirements/${result.id}${requirementDetailSuffix}`, { replace: true })
     }
@@ -421,15 +549,15 @@ export function RequirementDetailPage() {
 
   return (
     <div className="requirement-page">
-      <header className="panel requirement-hero">
+      <header className="panel detail-hero">
         <div className="min-w-0">
-          <Link to={requirementListHref} className="requirement-breadcrumb">
+          <Link to={requirementListHref} className="detail-breadcrumb">
             ← All requirements
           </Link>
-          <div className="mt-2 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--color-ink-muted)]">
+          <div className="eyebrow detail-eyebrow">
             {isNew ? 'Create requirement' : `Requirement · ${form.sourceId || 'No source ID'}`}
           </div>
-          <h2 className="requirement-title">
+          <h2 className="detail-title">
             {isNew ? 'New requirement' : form.shortTitle || form.sourceId || 'Untitled requirement'}
           </h2>
           {!isNew && form.shortTitle && (
@@ -438,6 +566,7 @@ export function RequirementDetailPage() {
           {!isNew && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               <StatusBadge value={lookupLabel(project.lookups.statuses, form.statusId || '')} />
+              {linkedWatchItems.length > 0 && <WatchBadge />}
               <ClassificationBadge value={lookupLabel(project.lookups.classifications, form.classificationId || '')} />
               {current && (
                 <AssessmentBadge value={lookupLabel(project.lookups.assessmentResults, current.resultId)} />
@@ -445,7 +574,7 @@ export function RequirementDetailPage() {
             </div>
           )}
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <div className="page-header-actions">
           {reqId && (
             <>
               <button
@@ -514,7 +643,7 @@ export function RequirementDetailPage() {
       </header>
 
       {errors.length > 0 && (
-        <div className="panel requirement-errors border-[var(--color-danger)] bg-[var(--color-danger-bg)] p-3 text-sm text-[var(--color-danger)]">
+        <div className="panel notice notice-danger requirement-errors">
           <ul className="list-disc pl-5">
             {errors.map((e) => (
               <li key={e}>{e}</li>
@@ -613,11 +742,62 @@ export function RequirementDetailPage() {
           >
             {editing ? (
               <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
+                <Field label="Source document">
+                  {sourceDocumentOptions.length > 0 ? (
+                    <FuzzySelect
+                      options={sourceDocumentOptions}
+                      value={form.sourceDocumentId || ''}
+                      onChange={handleSourceDocumentChange}
+                      placeholder="Search sources…"
+                      emptyLabel="No source document"
+                      allowClear
+                    />
+                  ) : (
+                    <div className="space-y-1.5">
+                      <p className="text-[0.72rem] text-[var(--color-ink-muted)]">
+                        No sources exist yet. Create one first, then assign it here.
+                      </p>
+                      <Link className="btn btn-secondary" to="/sources/new">
+                        Create Source
+                      </Link>
+                    </div>
+                  )}
+                </Field>
+                {isNew && form.sourceDocumentId && (
+                  <>
+                    <Field label="Source relationship">
+                      <select
+                        className="field-input"
+                        value={createSourceLinkType}
+                        onChange={(e) =>
+                          setCreateSourceLinkType(e.target.value as SourceRelationshipType)
+                        }
+                      >
+                        {SOURCE_RELATIONSHIP_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Source locator">
+                      <input
+                        className="field-input"
+                        value={createSourceLocator}
+                        placeholder="Section, page, paragraph…"
+                        onChange={(e) => setCreateSourceLocator(e.target.value)}
+                      />
+                    </Field>
+                  </>
+                )}
                 <Field label="Source requirement ID" required>
                   <input
                     className="field-input"
                     value={form.sourceId || ''}
-                    onChange={(e) => patch('sourceId', e.target.value)}
+                    onChange={(e) => {
+                      setSourceIdTouched(true)
+                      patch('sourceId', e.target.value)
+                    }}
                   />
                 </Field>
                 <Field label="Short title">
@@ -703,6 +883,21 @@ export function RequirementDetailPage() {
             ) : (
               <div className="space-y-3">
                 <dl className="summary-list">
+                  <SummaryValue label="Source document">
+                    {selectedSourceDocument ? (
+                      <Link
+                        className="text-[var(--color-accent)] hover:underline"
+                        to={`/sources/${selectedSourceDocument.id}`}
+                      >
+                        {selectedSourceDocument.identifier
+                          ? `${selectedSourceDocument.identifier} — `
+                          : ''}
+                        {selectedSourceDocument.title}
+                      </Link>
+                    ) : (
+                      '—'
+                    )}
+                  </SummaryValue>
                   <SummaryValue label="Status">
                     <StatusBadge value={lookupLabel(project.lookups.statuses, form.statusId || '')} />
                   </SummaryValue>
@@ -719,6 +914,7 @@ export function RequirementDetailPage() {
                     <ClassificationBadge value={lookupLabel(project.lookups.classifications, form.classificationId || '')} />
                   </SummaryValue>
                   <SummaryValue label="Derived" value={form.isDerived ? 'Yes' : 'No'} />
+                  <SummaryValue label="Watch items" value={String(linkedWatchItems.length)} />
                 </dl>
                 <TagSummary
                   categories={project.tagCategories}
@@ -748,7 +944,7 @@ export function RequirementDetailPage() {
                 <SummaryValue label="Last change" value={existing.changeSummary || '—'} />
               </dl>
             ) : (
-              <p className="text-sm text-[var(--color-ink-muted)]">
+              <p className="empty-copy">
                 History will begin when this requirement is created.
               </p>
             )}
@@ -769,6 +965,7 @@ export function RequirementDetailPage() {
               { label: 'Relationships', count: relationships.length },
               { label: 'Sources', count: sourceLinks.length },
               { label: 'Test activities', count: activityLinks.length },
+              { label: 'Watch items', count: linkedWatchItems.length },
             ]}
           />
           <Section
@@ -784,7 +981,7 @@ export function RequirementDetailPage() {
             }
           >
             {relationshipRows.length === 0 ? (
-              <p className="text-sm text-[var(--color-ink-muted)]">No relationships.</p>
+              <p className="empty-copy">No relationships.</p>
             ) : (
               <DataTable
                 data={relationshipRows}
@@ -825,7 +1022,7 @@ export function RequirementDetailPage() {
             }
           >
             {sourceLinkRows.length === 0 ? (
-              <p className="text-sm text-[var(--color-ink-muted)]">No linked sources.</p>
+              <p className="empty-copy">No linked sources.</p>
             ) : (
               <DataTable
                 data={sourceLinkRows}
@@ -854,13 +1051,13 @@ export function RequirementDetailPage() {
             }
           >
             {activityLinks.length === 0 ? (
-              <p className="text-sm text-[var(--color-ink-muted)]">No linked test activities.</p>
+              <p className="empty-copy">No linked test activities.</p>
             ) : (
               <ul className="space-y-2">
                 {activityLinks.map((link) => {
                   const activity = project.testActivities.find((t) => t.id === link.testActivityId)
                   return (
-                    <li key={link.id} className="rounded-md border border-[var(--color-line)] p-3">
+                    <li key={link.id} className="record-card">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <Link className="font-semibold text-[var(--color-accent)] hover:underline" to="/activities">
@@ -874,7 +1071,7 @@ export function RequirementDetailPage() {
                           {link.notes && <p className="mt-1 text-sm">{link.notes}</p>}
                         </div>
                         {editing && (
-                          <button type="button" className="btn btn-ghost text-xs text-[var(--color-danger)]" onClick={() => unlinkRequirementActivity(link.id)}>
+                          <button type="button" className="btn btn-ghost btn-sm btn-ghost-danger" onClick={() => unlinkRequirementActivity(link.id)}>
                             Unlink
                           </button>
                         )}
@@ -882,6 +1079,39 @@ export function RequirementDetailPage() {
                     </li>
                   )
                 })}
+              </ul>
+            )}
+          </Section>
+
+          <Section
+            id="watch-items"
+            title="Watch Items"
+            description="Standalone watch topics linked to this requirement."
+            action={
+              editing ? (
+                <Link className="btn btn-secondary" to={`/watch-items/new?requirement=${reqId}`}>
+                  New Watch Item
+                </Link>
+              ) : null
+            }
+          >
+            {linkedWatchItems.length === 0 ? (
+              <p className="empty-copy">No watch items are linked.</p>
+            ) : (
+              <ul className="space-y-2">
+                {linkedWatchItems.map((watchItem) => (
+                  <li key={watchItem.id} className="record-card record-card-row">
+                    <div>
+                      <Link className="font-semibold text-[var(--color-accent)] hover:underline" to={`/watch-items/${watchItem.id}`}>
+                        {watchItem.title}
+                      </Link>
+                      <div className="record-meta">
+                        {watchItem.observations.length} observation{watchItem.observations.length === 1 ? '' : 's'}
+                      </div>
+                    </div>
+                    <WatchItemStatusBadge value={watchItem.status} />
+                  </li>
+                ))}
               </ul>
             )}
           </Section>
@@ -932,11 +1162,11 @@ export function RequirementDetailPage() {
             }
           >
             {verifications.length === 0 ? (
-              <p className="text-sm text-[var(--color-ink-muted)]">No verification records.</p>
+              <p className="empty-copy">No verification records.</p>
             ) : (
               <div className="space-y-3">
                 {verifications.map((v) => (
-                  <div key={v.id} className="rounded-md border border-[var(--color-line)] p-3">
+                  <div key={v.id} className="record-card">
                     <div className="grid gap-3 md:grid-cols-3">
                       <Field label="Method">
                         <select
@@ -1008,7 +1238,7 @@ export function RequirementDetailPage() {
                     {editing && (
                       <button
                         type="button"
-                        className="btn btn-ghost mt-2 text-xs text-[var(--color-danger)]"
+                        className="btn btn-ghost btn-sm btn-ghost-danger mt-2"
                         onClick={() => deleteVerification(v.id)}
                       >
                         Delete verification
@@ -1074,14 +1304,14 @@ export function RequirementDetailPage() {
             }
           >
             {(form.evidenceIds || []).length === 0 ? (
-              <p className="text-sm text-[var(--color-ink-muted)]">No evidence references.</p>
+              <p className="empty-copy">No evidence references.</p>
             ) : (
               <ul className="space-y-2">
                 {(form.evidenceIds || []).map((eid) => {
                   const ev = project.evidence.find((e) => e.id === eid)
                   if (!ev) return <li key={eid}>Missing evidence {eid}</li>
                   return (
-                    <li key={eid} className="rounded-md border border-[var(--color-line)] p-3 text-sm">
+                    <li key={eid} className="record-card text-sm">
                       <div className="font-semibold">{ev.title || ev.fileName || 'Evidence'}</div>
                       <div className="break-all text-[var(--color-ink-muted)]">{ev.filePath}</div>
                       <div className="text-xs">
@@ -1133,11 +1363,11 @@ export function RequirementDetailPage() {
             }
           >
             {assessments.length === 0 ? (
-              <p className="text-sm text-[var(--color-ink-muted)]">No assessments recorded.</p>
+              <p className="empty-copy">No assessments recorded.</p>
             ) : (
               <div className="space-y-3">
                 {assessments.map((a) => (
-                  <div key={a.id} className="rounded-md border border-[var(--color-line)] p-3">
+                  <div key={a.id} className="record-card">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <AssessmentBadge value={lookupLabel(project.lookups.assessmentResults, a.resultId)} />
                       {a.isCurrent && <span className="badge border-slate-300 bg-slate-50">Current</span>}
@@ -1197,7 +1427,7 @@ export function RequirementDetailPage() {
                         )}
                         <button
                           type="button"
-                          className="btn btn-ghost text-xs text-[var(--color-danger)]"
+                          className="btn btn-ghost btn-sm btn-ghost-danger"
                           onClick={() => deleteAssessment(a.id)}
                         >
                           Delete
@@ -1351,7 +1581,7 @@ export function RequirementDetailPage() {
             .filter((selectedId) => selectedId !== reqId)
           next.delete('selected')
           remainingSelectedIds.forEach((selectedId) => next.append('selected', selectedId))
-          deleteRequirement(reqId)
+          deleteRequirement(reqId, editorName || project.metadata.editorNameDefault)
           const search = next.toString()
           navigate(`/requirements${search ? `?${search}` : ''}`)
         }}
@@ -1369,38 +1599,9 @@ export function RequirementDetailPage() {
   )
 }
 
-function Field({
-  label,
-  children,
-  required,
-}: {
-  label: string
-  children: ReactNode
-  required?: boolean
-}) {
-  return (
-    <label className="block">
-      <span className="field-label">
-        {label}
-        {required ? ' *' : ''}
-      </span>
-      {children}
-    </label>
-  )
-}
-
 function DetailContent({ html, prominent = false }: { html: string; prominent?: boolean }) {
-  const hasContent = html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .trim().length > 0
-
-  if (!hasContent) {
-    return <p className="text-sm italic text-[var(--color-ink-muted)]">Not provided.</p>
-  }
-
   return (
-    <RichTextView
+    <RichTextOrEmpty
       html={html}
       className={prominent ? 'requirement-statement' : 'text-[0.8rem] leading-relaxed'}
     />
@@ -1412,23 +1613,6 @@ function DetailGroup({ label, html }: { label: string; html: string }) {
     <div className="detail-group">
       <div className="detail-group-label">{label}</div>
       <DetailContent html={html} />
-    </div>
-  )
-}
-
-function SummaryValue({
-  label,
-  value,
-  children,
-}: {
-  label: string
-  value?: string
-  children?: ReactNode
-}) {
-  return (
-    <div className="summary-row">
-      <dt>{label}</dt>
-      <dd>{children ?? value ?? '—'}</dd>
     </div>
   )
 }
@@ -1580,37 +1764,6 @@ function TabPageIntro({
           </div>
         ))}
       </dl>
-    </section>
-  )
-}
-
-function Section({
-  id,
-  title,
-  description,
-  children,
-  action,
-  className = '',
-}: {
-  id?: string
-  title: string
-  description?: string
-  children: ReactNode
-  action?: ReactNode
-  className?: string
-}) {
-  return (
-    <section id={id} className={`panel detail-section ${className}`}>
-      <div className="detail-section-header">
-        <div>
-          <h3 className="font-semibold">{title}</h3>
-          {description && (
-            <p className="mt-0.5 text-[0.7rem] text-[var(--color-ink-muted)]">{description}</p>
-          )}
-        </div>
-        {action}
-      </div>
-      <div className="detail-section-body">{children}</div>
     </section>
   )
 }

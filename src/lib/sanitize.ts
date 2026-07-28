@@ -41,22 +41,27 @@ export function plainTextFromHtml(html: string): string {
     .trim()
 }
 
+export function isAllowedLinkHref(href: string): boolean {
+  const trimmed = href.trim()
+  const lower = trimmed.toLowerCase()
+  return (
+    lower.startsWith('http://') ||
+    lower.startsWith('https://') ||
+    lower.startsWith('file:') ||
+    trimmed.startsWith('\\\\') ||
+    /^[a-zA-Z]:[\\/]/.test(trimmed) ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('./') ||
+    trimmed.startsWith('../')
+  )
+}
+
 export function ensureLinkSafety(html: string): string {
   const clean = sanitizeHtml(html)
   const doc = new DOMParser().parseFromString(clean, 'text/html')
   doc.querySelectorAll('a').forEach((anchor) => {
     const href = anchor.getAttribute('href') || ''
-    const lower = href.trim().toLowerCase()
-    const allowed =
-      lower.startsWith('http://') ||
-      lower.startsWith('https://') ||
-      lower.startsWith('file:') ||
-      lower.startsWith('\\\\') ||
-      /^[a-zA-Z]:[\\/]/.test(href) ||
-      href.startsWith('/') ||
-      href.startsWith('./') ||
-      href.startsWith('../')
-    if (!allowed) {
+    if (!isAllowedLinkHref(href)) {
       anchor.removeAttribute('href')
     } else {
       anchor.setAttribute('rel', 'noopener noreferrer')

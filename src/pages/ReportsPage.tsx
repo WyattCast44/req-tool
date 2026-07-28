@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
 import { filterRequirements } from '../lib/filters'
-import { downloadTextFile, matrixToCsv, requirementsToCsv } from '../lib/export'
+import { downloadTextFile, matrixToCsv, requirementsToCsv, watchItemsToCsv } from '../lib/export'
 import { useMatrixUrlState, useRequirementViewState } from '../lib/urlState'
 import { downloadRequirementsDocx } from '../lib/requirementsDocxExport'
+import { PageHeader } from '../components/PageHeader'
 
 export function ReportsPage() {
   const navigate = useNavigate()
@@ -28,14 +29,12 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-2.5">
-      <div>
-        <h2 className="page-title">Reports & Exports</h2>
-        <p className="page-subtitle">
-          Generate portable project files, CSV products, and printer-friendly requirement reports.
-        </p>
-      </div>
+      <PageHeader
+        title="Reports & Exports"
+        subtitle="Generate portable project files, CSV products, and printer-friendly requirement reports."
+      />
 
-      <section className="panel grid gap-3 p-4 md:grid-cols-2">
+      <section className="grid gap-3 md:grid-cols-2">
         <ExportCard
           title="Project save file (.otreq)"
           body="Export a complete replacement authoritative project database."
@@ -50,6 +49,18 @@ export function ReportsPage() {
             downloadTextFile(
               `${project.metadata.name.replace(/\s+/g, '_')}_requirements_all.csv`,
               requirementsToCsv(project, project.requirements),
+              'text/csv',
+            )
+          }
+        />
+        <ExportCard
+          title="CSV — watch items"
+          body={`Export all ${project.watchItems.length} watch items with observations and linked records.`}
+          actionLabel="Export Watch Items CSV"
+          onClick={() =>
+            downloadTextFile(
+              `${project.metadata.name.replace(/\s+/g, '_')}_watch_items.csv`,
+              watchItemsToCsv(project),
               'text/csv',
             )
           }
@@ -116,17 +127,21 @@ function ExportCard({
   disabled?: boolean
 }) {
   return (
-    <div className="rounded-md border border-[var(--color-line)] p-4">
-      <h3 className="font-semibold">{title}</h3>
-      <p className="mt-1 text-sm text-[var(--color-ink-muted)]">{body}</p>
-      <button
-        type="button"
-        className="btn btn-secondary mt-3"
-        disabled={disabled}
-        onClick={onClick}
-      >
-        {actionLabel}
-      </button>
+    <div className="panel">
+      <div className="panel-header">
+        <h3>{title}</h3>
+      </div>
+      <div className="panel-body">
+        <p className="muted-copy">{body}</p>
+        <button
+          type="button"
+          className="btn btn-secondary mt-3"
+          disabled={disabled}
+          onClick={onClick}
+        >
+          {actionLabel}
+        </button>
+      </div>
     </div>
   )
 }

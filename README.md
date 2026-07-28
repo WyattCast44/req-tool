@@ -44,12 +44,12 @@ Local browser storage is never the authoritative record.
 Import from the welcome screen:
 
 ```text
-examples/EaglesNest_Requirements_v001_2026-07-26.otreq
-examples/EaglesNest_Requirements_STRESS_v001_2026-07-26.otreq
+examples/Requirements_SIMPLE_v001_2026-07-26.otreq
+examples/Requirements_STRESS_v001_2026-07-26.otreq
 ```
 
-- **Small demo** (`v001`): 12 requirements with sources, relationships, activities, assessments, tags, and intentional dashboard gaps.
-- **Stress dataset** (`STRESS_v001`): ~900 requirements, linked sources, ~770 requirement relationships, 48 activities, and hundreds of verifications/assessments for UX performance testing.
+- **Small demo** (`SIMPLE_v001`): 12 requirements plus standalone and linked watch items, sources, relationships, activities, assessments, tags, and intentional dashboard gaps.
+- **Stress dataset** (`STRESS_v001`): ~900 requirements, 64 watch items, linked sources, ~770 requirement relationships, 48 activities, and hundreds of verifications/assessments for UX performance testing.
 
 Regenerate with:
 

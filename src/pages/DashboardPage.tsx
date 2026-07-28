@@ -4,6 +4,7 @@ import { useProjectStore } from '../store/projectStore'
 import { buildDashboardStats } from '../lib/filters'
 import { formatDateTime } from '../lib/ids'
 import { EmptyState } from '../components/EmptyState'
+import { PageHeader } from '../components/PageHeader'
 import { requirementFilterSearch } from '../lib/urlState'
 
 export function DashboardPage() {
@@ -16,15 +17,15 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-2.5">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Dashboard</h2>
-          <p className="page-subtitle">
+      <PageHeader
+        title="Dashboard"
+        subtitle={
+          <>
             {project.requirements.length} requirements · {(project.sources ?? []).length} sources ·{' '}
             {project.testActivities.length} activities · {project.relationships.length} requirement relationships
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {project.requirements.length === 0 ? (
         <EmptyState
@@ -38,29 +39,33 @@ export function DashboardPage() {
         />
       ) : (
         <>
-          <section className="panel p-2.5">
-            <h3 className="section-title">Requirement status</h3>
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 xl:grid-cols-7">
-              {stats.statusCounts.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="stat-tile"
-                  onClick={() =>
-                    navigate(`/requirements${requirementFilterSearch({ statusIds: [item.id] })}`)
-                  }
-                >
-                  <div className="stat-value">{item.count}</div>
-                  <div className="stat-label">{item.label}</div>
-                </button>
-              ))}
+          <section className="panel">
+            <div className="panel-header">
+              <h3>Requirement status</h3>
+            </div>
+            <div className="panel-body">
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 xl:grid-cols-7">
+                {stats.statusCounts.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="stat-tile"
+                    onClick={() =>
+                      navigate(`/requirements${requirementFilterSearch({ statusIds: [item.id] })}`)
+                    }
+                  >
+                    <div className="stat-value">{item.count}</div>
+                    <div className="stat-label">{item.label}</div>
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
 
           <div className="grid gap-2.5 xl:grid-cols-2">
-            <section className="panel overflow-hidden">
-              <div className="border-b border-[var(--color-line)] bg-[var(--color-panel)] px-2.5 py-1.5">
-                <h3 className="section-title mb-0">Recent changes</h3>
+            <section className="panel">
+              <div className="panel-header">
+                <h3>Recent changes</h3>
               </div>
               {stats.recentChanges.length === 0 ? (
                 <p className="px-2.5 py-3 text-[0.75rem] text-[var(--color-ink-muted)]">No modification history yet.</p>
@@ -98,9 +103,9 @@ export function DashboardPage() {
               )}
             </section>
 
-            <section className="panel overflow-hidden">
-              <div className="border-b border-[var(--color-line)] bg-[var(--color-panel)] px-2.5 py-1.5">
-                <h3 className="section-title mb-0">Relationship gaps</h3>
+            <section className="panel">
+              <div className="panel-header">
+                <h3>Relationship gaps</h3>
               </div>
               <div className="table-wrap border-0">
                 <table className="data-table">

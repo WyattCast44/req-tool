@@ -35,6 +35,37 @@ describe('parseAndValidateProject', () => {
     expect(result.issues[0].message).toContain('Unsupported schema version')
   })
 
+  it('rejects stale files without the current watchItems collection', () => {
+    const project = createTestProject()
+    const staleProject = { ...project } as Partial<typeof project>
+    delete staleProject.watchItems
+
+    const result = parseAndValidateProject(JSON.stringify(staleProject))
+
+    expect(result.ok).toBe(false)
+    expect(result.issues[0]).toMatchObject({
+      level: 'error',
+      path: 'watchItems',
+    })
+  })
+
+  it('rejects malformed watch item entries without throwing', () => {
+    const project = createTestProject()
+    const malformedProject = {
+      ...project,
+      watchItems: [null],
+    }
+
+    const result = parseAndValidateProject(JSON.stringify(malformedProject))
+
+    expect(result.ok).toBe(false)
+    expect(result.issues).toContainEqual({
+      level: 'error',
+      message: 'Watch item at index 0 must be an object.',
+      path: 'watchItems.0',
+    })
+  })
+
   it('rejects requirements missing required domain fields', () => {
     const project = createTestProject()
     project.requirements = [
@@ -52,6 +83,37 @@ describe('parseAndValidateProject', () => {
         path: 'requirements.req-1',
       }),
     )
+  })
+
+  it('loads a standalone watch item without requirement or source links', () => {
+    const project = createTestProject()
+    project.watchItems = [
+      {
+        id: 'watch-1',
+        title: 'Standalone concern',
+        description: '<p>No links are required.</p>',
+        status: 'Open',
+        observations: [
+          {
+            id: 'observation-1',
+            text: '<p>Initial observation.</p>',
+            createdAt: '2026-07-26T12:00:00.000Z',
+            modifiedAt: '2026-07-26T12:00:00.000Z',
+            editorName: 'Test Analyst',
+          },
+        ],
+        requirementIds: [],
+        sourceIds: [],
+        createdAt: '2026-07-26T12:00:00.000Z',
+        modifiedAt: '2026-07-26T12:00:00.000Z',
+        editorName: 'Test Analyst',
+      },
+    ]
+
+    const result = parseAndValidateProject(JSON.stringify(project))
+
+    expect(result.ok).toBe(true)
+    expect(result.issues).toEqual([])
   })
 
   it('loads dangling references with actionable warnings', () => {

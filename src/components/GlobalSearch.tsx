@@ -13,6 +13,13 @@ type SearchHit =
       meta: string
     }
   | {
+      kind: 'watchItem'
+      id: string
+      primary: string
+      secondary: string
+      meta: string
+    }
+  | {
       kind: 'activity'
       id: string
       primary: string
@@ -65,7 +72,29 @@ export function GlobalSearch() {
       if (actHits.length >= 6) break
     }
 
-    return [...reqHits.slice(0, 8), ...actHits.slice(0, 4)]
+    const watchHits: SearchHit[] = []
+    for (const watchItem of project.watchItems) {
+      const hay = [
+        watchItem.title,
+        cheapPlainText(watchItem.description),
+        ...watchItem.observations.map((observation) => cheapPlainText(observation.text)),
+      ]
+        .join(' ')
+        .toLowerCase()
+      if (!hay.includes(q)) continue
+      watchHits.push({
+        kind: 'watchItem',
+        id: watchItem.id,
+        primary: watchItem.title,
+        secondary:
+          cheapPlainText(watchItem.description).slice(0, 80) ||
+          `${watchItem.observations.length} observation${watchItem.observations.length === 1 ? '' : 's'}`,
+        meta: watchItem.status,
+      })
+      if (watchHits.length >= 4) break
+    }
+
+    return [...reqHits.slice(0, 6), ...watchHits.slice(0, 3), ...actHits.slice(0, 3)]
   }, [project, query])
 
   useEffect(() => {
@@ -106,6 +135,8 @@ export function GlobalSearch() {
     setQuery('')
     if (hit.kind === 'requirement') {
       navigate(`/requirements/${hit.id}`)
+    } else if (hit.kind === 'watchItem') {
+      navigate(`/watch-items/${hit.id}`)
     } else {
       navigate('/activities')
     }
@@ -118,20 +149,26 @@ export function GlobalSearch() {
   }
 
   return (
-    <div ref={rootRef} className="relative min-w-[14rem] flex-1 max-w-xl">
+    <div ref={rootRef} className="relative w-full min-w-[14rem]">
       <label className="sr-only" htmlFor="global-search">
         Global search
       </label>
       <div className="relative">
-        <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[0.7rem] text-[var(--color-ink-muted)]">
-          ⌕
+        <span
+          className="pointer-events-none absolute left-2.5 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center text-[var(--color-ink-muted)]"
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 16 16" className="size-full" fill="none" stroke="currentColor" strokeWidth="1.75">
+            <circle cx="7" cy="7" r="4.5" />
+            <path d="M10.5 10.5 14 14" strokeLinecap="round" />
+          </svg>
         </span>
         <input
           id="global-search"
           ref={inputRef}
-          className="field-input pl-6 pr-14"
+          className="field-input pl-9 pr-14"
           value={query}
-          placeholder="Search requirements & activities…"
+          placeholder="Search requirements, watch items & activities…"
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             setQuery(e.target.value)
@@ -175,7 +212,7 @@ export function GlobalSearch() {
                 <div className="flex items-center justify-between gap-2">
                   <span className="mono font-semibold text-[var(--color-accent)]">{hit.primary}</span>
                   <span className="badge border-slate-300 bg-slate-50 text-slate-700">
-                    {hit.kind === 'requirement' ? 'REQ' : 'ACT'} · {hit.meta}
+                    {hit.kind === 'requirement' ? 'REQ' : hit.kind === 'watchItem' ? 'WATCH' : 'ACT'} · {hit.meta}
                   </span>
                 </div>
                 <div className="mt-0.5 truncate text-[0.72rem] text-[var(--color-ink-muted)]">{hit.secondary}</div>
@@ -187,7 +224,7 @@ export function GlobalSearch() {
             className="global-search-item text-[0.72rem] font-semibold text-[var(--color-accent)]"
             onClick={runFullSearch}
           >
-            Open all matches in Requirements →
+            Open Requirements search →
           </button>
         </div>
       )}

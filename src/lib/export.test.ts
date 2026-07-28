@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createTestProject, createTestRequirement } from '../test/projectFactory'
 import { lookupByValue } from './defaults'
-import { exportFilename, prepareExportProject, requirementsToCsv } from './export'
+import { exportFilename, prepareExportProject, requirementsToCsv, watchItemsToCsv } from './export'
 
 describe('project exports', () => {
   it('increments export metadata without mutating the working project', () => {
@@ -37,6 +37,28 @@ describe('project exports', () => {
     }
     requirement.tagIds = [tag.id]
     project.requirements = [requirement]
+    project.watchItems = [
+      {
+        id: 'watch-1',
+        title: 'Confirm readiness evidence',
+        description: '',
+        status: 'Open',
+        observations: [
+          {
+            id: 'observation-1',
+            text: '<p>Evidence is pending.</p>',
+            createdAt: requirement.createdAt,
+            modifiedAt: requirement.modifiedAt,
+            editorName: 'Test Analyst',
+          },
+        ],
+        requirementIds: [requirement.id],
+        sourceIds: [],
+        createdAt: requirement.createdAt,
+        modifiedAt: requirement.modifiedAt,
+        editorName: 'Test Analyst',
+      },
+    ]
     project.tags = [tag]
     project.verifications = [
       {
@@ -59,10 +81,18 @@ describe('project exports', () => {
     const lines = csv.split('\r\n')
 
     expect(lines).toHaveLength(2)
-    expect(lines[0]).toContain('Source ID,Short Title,Requirement Text')
+    expect(lines[0]).toContain('Source ID,Source Document,Short Title,Requirement Text')
+    expect(lines[0]).toContain('Linked Watch Items')
     expect(lines[1]).toContain('"Detection, tracking"')
     expect(lines[1]).toContain('The system shall detect & track.')
     expect(lines[1]).toContain('"Mission ""Alpha"""')
     expect(lines[1]).toContain(',Test,')
+    expect(lines[1]).toContain('Confirm readiness evidence')
+
+    const watchCsv = watchItemsToCsv(project)
+    expect(watchCsv).toContain('Title,Status,Description,Observations,Requirements,Sources')
+    expect(watchCsv).toContain('Confirm readiness evidence,Open')
+    expect(watchCsv).toContain('REQ-1')
+    expect(watchCsv).toContain('Evidence is pending.')
   })
 })

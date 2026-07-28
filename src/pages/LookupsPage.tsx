@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { ConfirmDialog } from '../components/Modal'
 import { DataTable } from '../components/DataTable'
+import { PageHeader } from '../components/PageHeader'
 import { fuzzyIncludesFilter } from '../lib/tableFilters'
 import { useProjectStore } from '../store/projectStore'
 import type { LookupValue, Lookups, Tag, TagCategory } from '../types/project'
@@ -119,7 +120,7 @@ export function LookupsPage() {
           <div className="flex flex-wrap gap-1">
             <button
               type="button"
-              className="btn btn-ghost px-2 py-1 text-xs"
+              className="btn btn-ghost btn-sm"
               onClick={() => {
                 const name = window.prompt('Rename category', row.original.category.name)
                 if (!name?.trim()) return
@@ -141,7 +142,7 @@ export function LookupsPage() {
             </button>
             <button
               type="button"
-              className="btn btn-ghost px-2 py-1 text-xs text-[var(--color-danger)]"
+              className="btn btn-ghost btn-sm btn-ghost-danger"
               onClick={() =>
                 setPendingDelete({ kind: 'category', id: row.original.id, label: row.original.name })
               }
@@ -217,7 +218,7 @@ export function LookupsPage() {
           <div className="flex gap-1">
             <button
               type="button"
-              className="btn btn-ghost px-2 py-1 text-xs"
+              className="btn btn-ghost btn-sm"
               onClick={() => {
                 const name = window.prompt('Rename tag', row.original.tag.name)
                 if (!name?.trim()) return
@@ -228,7 +229,7 @@ export function LookupsPage() {
             </button>
             <button
               type="button"
-              className="btn btn-ghost px-2 py-1 text-xs text-[var(--color-danger)]"
+              className="btn btn-ghost btn-sm btn-ghost-danger"
               onClick={() => setPendingDelete({ kind: 'tag', id: row.original.id, label: row.original.name })}
             >
               Delete
@@ -247,14 +248,14 @@ export function LookupsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="page-title">Lookups & Tags</h2>
-        <p className="page-subtitle">
-          {editing
+      <PageHeader
+        title="Lookups & Tags"
+        subtitle={
+          editing
             ? 'Manage controlled metadata. The application warns before changing values that are already assigned.'
-            : 'Browse controlled metadata values. Enter Edit Mode to create, rename, or delete them.'}
-        </p>
-      </div>
+            : 'Browse controlled metadata values. Enter Edit Mode to create, rename, or delete them.'
+        }
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         {LOOKUP_SECTIONS.map((section) => (
@@ -285,9 +286,9 @@ export function LookupsPage() {
           />
         ))}
 
-        <section className="panel p-4 lg:col-span-2">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-semibold">Tag categories</h3>
+        <section className="panel lg:col-span-2">
+          <div className="panel-header">
+            <h3>Tag categories</h3>
             {editing && (
               <button
                 type="button"
@@ -302,25 +303,27 @@ export function LookupsPage() {
               </button>
             )}
           </div>
-          {categoryRows.length === 0 ? (
-            <p className="text-sm text-[var(--color-ink-muted)]">No tag categories.</p>
-          ) : (
-            <DataTable
-              data={categoryRows}
-              columns={categoryColumns}
-              getRowId={(row) => row.id}
-              pageSize={25}
-              urlStateKey="tagCategories"
-              maxHeightClassName="max-h-[40vh]"
-              sizingStorageKey="lookup-tag-categories"
-              emptyMessage="No categories match the current column filters."
-            />
-          )}
+          <div className="panel-body">
+            {categoryRows.length === 0 ? (
+              <p className="empty-copy">No tag categories.</p>
+            ) : (
+              <DataTable
+                data={categoryRows}
+                columns={categoryColumns}
+                getRowId={(row) => row.id}
+                pageSize={25}
+                urlStateKey="tagCategories"
+                maxHeightClassName="max-h-[40vh]"
+                sizingStorageKey="lookup-tag-categories"
+                emptyMessage="No categories match the current column filters."
+              />
+            )}
+          </div>
         </section>
 
-        <section className="panel p-4 lg:col-span-2">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-semibold">Tags</h3>
+        <section className="panel lg:col-span-2">
+          <div className="panel-header">
+            <h3>Tags</h3>
             {editing && categoryRows.length > 0 && (
               <button
                 type="button"
@@ -347,20 +350,22 @@ export function LookupsPage() {
               </button>
             )}
           </div>
-          {tagRows.length === 0 ? (
-            <p className="text-sm text-[var(--color-ink-muted)]">No tags.</p>
-          ) : (
-            <DataTable
-              data={tagRows}
-              columns={tagColumns}
-              getRowId={(row) => row.id}
-              pageSize={50}
-              urlStateKey="tags"
-              maxHeightClassName="max-h-[50vh]"
-              sizingStorageKey="lookup-tags"
-              emptyMessage="No tags match the current column filters."
-            />
-          )}
+          <div className="panel-body">
+            {tagRows.length === 0 ? (
+              <p className="empty-copy">No tags.</p>
+            ) : (
+              <DataTable
+                data={tagRows}
+                columns={tagColumns}
+                getRowId={(row) => row.id}
+                pageSize={50}
+                urlStateKey="tags"
+                maxHeightClassName="max-h-[50vh]"
+                sizingStorageKey="lookup-tags"
+                emptyMessage="No tags match the current column filters."
+              />
+            )}
+          </div>
         </section>
       </div>
 
@@ -488,21 +493,21 @@ function LookupSectionTable({
           <div className="flex flex-wrap gap-1">
             <button
               type="button"
-              className="btn btn-ghost px-2 py-1 text-xs"
+              className="btn btn-ghost btn-sm"
               onClick={() => onRename(row.original.item)}
             >
               Rename
             </button>
             <button
               type="button"
-              className="btn btn-ghost px-2 py-1 text-xs"
+              className="btn btn-ghost btn-sm"
               onClick={() => onToggleActive(row.original.item)}
             >
               {row.original.item.active ? 'Deactivate' : 'Activate'}
             </button>
             <button
               type="button"
-              className="btn btn-ghost px-2 py-1 text-xs text-[var(--color-danger)]"
+              className="btn btn-ghost btn-sm btn-ghost-danger"
               onClick={() => onDelete(row.original.item)}
             >
               Delete
@@ -520,29 +525,31 @@ function LookupSectionTable({
   }, [editing, onDelete, onRename, onToggleActive])
 
   return (
-    <section className="panel p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">{label}</h3>
+    <section className="panel">
+      <div className="panel-header">
+        <h3>{label}</h3>
         {editing && (
           <button type="button" className="btn btn-secondary" onClick={onAdd}>
             Add
           </button>
         )}
       </div>
-      {rows.length === 0 ? (
-        <p className="text-sm text-[var(--color-ink-muted)]">No values.</p>
-      ) : (
-        <DataTable
-          data={rows}
-          columns={columns}
-          getRowId={(row) => row.id}
-          pageSize={25}
-          urlStateKey={sectionKey}
-          maxHeightClassName="max-h-[40vh]"
-          sizingStorageKey={`lookups-${sectionKey}`}
-          emptyMessage="No values match the current column filters."
-        />
-      )}
+      <div className="panel-body">
+        {rows.length === 0 ? (
+          <p className="empty-copy">No values.</p>
+        ) : (
+          <DataTable
+            data={rows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            pageSize={25}
+            urlStateKey={sectionKey}
+            maxHeightClassName="max-h-[40vh]"
+            sizingStorageKey={`lookups-${sectionKey}`}
+            emptyMessage="No values match the current column filters."
+          />
+        )}
+      </div>
     </section>
   )
 }

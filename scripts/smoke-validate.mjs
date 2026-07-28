@@ -48,6 +48,7 @@ const sample = {
     {
       id: '22222222-2222-4222-8222-222222222222',
       sourceId: 'SRD-001',
+      sourceDocumentId: '33333333-3333-4333-8333-333333333333',
       shortTitle: 'Smoke req',
       requirementText: '<p>Shall do the thing.</p>',
       statusId: 's1',
@@ -65,6 +66,28 @@ const sample = {
       modifiedAt: new Date().toISOString(),
       editorName: 'Smoke',
       changeSummary: 'created',
+    },
+  ],
+  watchItems: [
+    {
+      id: '55555555-5555-4555-8555-555555555555',
+      title: 'Smoke watch item',
+      description: '<p>Confirm the offline round trip.</p>',
+      status: 'Open',
+      observations: [
+        {
+          id: '66666666-6666-4666-8666-666666666666',
+          text: '<p>Initial smoke observation.</p>',
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString(),
+          editorName: 'Smoke',
+        },
+      ],
+      requirementIds: ['22222222-2222-4222-8222-222222222222'],
+      sourceIds: ['33333333-3333-4333-8333-333333333333'],
+      createdAt: new Date().toISOString(),
+      modifiedAt: new Date().toISOString(),
+      editorName: 'Smoke',
     },
   ],
   relationships: [],
@@ -114,6 +137,7 @@ assert(sample.requirements[0].sourceId, 'source id required')
 assert(sample.requirements[0].requirementText, 'text required')
 assert(sample.sources[0].title, 'source title required')
 assert(sample.requirementSourceLinks[0].sourceId === sample.sources[0].id, 'source link')
+assert(sample.watchItems[0].observations.length > 0, 'watch item observations')
 
 const out = new URL('../dist/smoke-sample.otreq', import.meta.url)
 writeFileSync(out, JSON.stringify(sample, null, 2))
@@ -130,14 +154,26 @@ for (const filename of [
   assert(example.schemaVersion === schemaVersion, `${filename} current schema`)
   assert(Array.isArray(example.sources), `${filename} sources`)
   assert(Array.isArray(example.requirementSourceLinks), `${filename} source links`)
+  assert(Array.isArray(example.watchItems), `${filename} watch items`)
+  assert(
+    example.watchItems.every(
+      (watchItem) =>
+        watchItem.title &&
+        watchItem.observations.length > 0 &&
+        Array.isArray(watchItem.requirementIds) &&
+        Array.isArray(watchItem.sourceIds),
+    ),
+    `${filename} valid watch items`,
+  )
   assert(
     example.requirements.every(
       (requirement) =>
+        typeof requirement.sourceDocumentId === 'string' &&
         !Object.hasOwn(requirement, 'sourceDocument') &&
         !Object.hasOwn(requirement, 'sourceDocumentVersion') &&
         !Object.hasOwn(requirement, 'sourceSection'),
     ),
-    `${filename} has no legacy provenance fields`,
+    `${filename} has sourceDocumentId and no legacy provenance fields`,
   )
 }
 

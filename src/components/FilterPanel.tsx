@@ -189,38 +189,9 @@ export function FilterPanel() {
   const hasAnyFilter = activeCount > 0 || Boolean(searchQuery.trim())
 
   return (
-    <div className="panel space-y-2 p-2.5">
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="min-w-[14rem] flex-1">
-          <span className="field-label">List search</span>
-          <input
-            className="field-input"
-            value={searchQuery}
-            placeholder="Filter this list (ID, title, text, notes…)"
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </label>
-        <label className="min-w-[10rem]">
-          <span className="field-label">Saved view</span>
-          <select
-            className="field-input"
-            value={activeSavedViewId || ''}
-            onChange={(e) => {
-              if (!e.target.value) clearSavedView()
-              else {
-                const view = savedViews.find((item) => item.id === e.target.value)
-                if (view) applySavedView(view)
-              }
-            }}
-          >
-            <option value="">None</option>
-            {savedViews.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </label>
+    <div className="panel">
+      <div className="panel-header">
+        <h3>List search</h3>
         <button
           type="button"
           className="btn btn-secondary"
@@ -231,157 +202,191 @@ export function FilterPanel() {
           Clear Filters
         </button>
       </div>
-
-      {activeCount > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 rounded border border-[var(--color-line-strong)] bg-[var(--color-accent-soft)] px-2 py-1.5">
-          <span className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)]">
-            {activeCount} field filter{activeCount === 1 ? '' : 's'}
-          </span>
-          {activeChips.map((chip) => (
-            <button
-              key={chip.id}
-              type="button"
-              className="inline-flex max-w-full items-center gap-1 rounded border border-[var(--color-line-strong)] bg-white px-1.5 py-0.5 text-left text-[0.7rem] text-[var(--color-ink)] hover:border-[var(--color-accent)]"
-              onClick={chip.onClear}
-              title={`Clear ${chip.label}`}
-            >
-              <span className="truncate">{chip.label}</span>
-              <span className="shrink-0 text-[var(--color-ink-muted)]" aria-hidden>
-                ×
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      <details>
-        <summary className="cursor-pointer text-[0.72rem] font-semibold text-[var(--color-accent)]">
-          Field filters & tags
-          {activeCount > 0 ? (
-            <span className="ml-1.5 rounded bg-[var(--color-accent)] px-1.5 py-0.5 text-[0.65rem] font-bold tracking-normal text-white">
-              {activeCount} active
-            </span>
-          ) : (
-            <span className="ml-1.5 font-normal text-[var(--color-ink-muted)]">none applied</span>
-          )}
-        </summary>
-        <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <MultiSelect
-            label="Status"
-            options={project.lookups.statuses.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
-            values={filters.statusIds}
-            onChange={(statusIds) => setFilters({ statusIds })}
-          />
-          <MultiSelect
-            label="Classification"
-            options={project.lookups.classifications.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
-            values={filters.classificationIds}
-            onChange={(classificationIds) => setFilters({ classificationIds })}
-          />
-          <MultiSelect
-            label="Type"
-            options={project.lookups.types.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
-            values={filters.typeIds}
-            onChange={(typeIds) => setFilters({ typeIds })}
-          />
-          <MultiSelect
-            label="Priority"
-            options={project.lookups.priorities.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
-            values={filters.priorityIds}
-            onChange={(priorityIds) => setFilters({ priorityIds })}
-          />
-          <MultiSelect
-            label="Verification method"
-            options={project.lookups.verificationMethods.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
-            values={filters.verificationMethodIds}
-            onChange={(verificationMethodIds) => setFilters({ verificationMethodIds })}
-          />
-          <MultiSelect
-            label="Assessment result"
-            options={project.lookups.assessmentResults.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
-            values={filters.assessmentResultIds}
-            onChange={(assessmentResultIds) => setFilters({ assessmentResultIds })}
-          />
-          <MultiSelect
-            label="Test activity"
-            options={project.testActivities.map((t) => ({ id: t.id, label: t.title }))}
-            values={filters.testActivityIds}
-            onChange={(testActivityIds) => setFilters({ testActivityIds })}
-          />
-          <MultiSelect
-            label="Test phase"
-            options={project.lookups.testPhases.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
-            values={filters.testPhaseIds}
-            onChange={(testPhaseIds) => setFilters({ testPhaseIds })}
-          />
-          <MultiSelect
-            label="Owner"
-            options={owners.map((o) => ({ id: o, label: o }))}
-            values={filters.owners}
-            onChange={(ownersVals) => setFilters({ owners: ownersVals })}
-          />
-          <MultiSelect
-            label="Source"
-            options={sources}
-            values={filters.sourceIds}
-            onChange={(sourceIds) => setFilters({ sourceIds })}
-          />
-          <MultiSelect
-            label="Tags"
-            options={project.tags.filter((t) => t.active).map((t) => ({ id: t.id, label: t.name }))}
-            values={filters.tagIds}
-            onChange={(tagIds) => setFilters({ tagIds })}
-          />
-          <label className="block">
-            <span className="field-label">Tag logic</span>
+      <div className="panel-body space-y-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="min-w-[14rem] flex-1">
+            <span className="field-label">Search</span>
+            <input
+              className="field-input"
+              value={searchQuery}
+              placeholder="Filter this list (ID, title, text, notes…)"
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </label>
+          <label className="min-w-[10rem]">
+            <span className="field-label">Saved view</span>
             <select
               className="field-input"
-              value={tagLogic}
-              onChange={(e) => setTagLogic(e.target.value as TagLogic)}
+              value={activeSavedViewId || ''}
+              onChange={(e) => {
+                if (!e.target.value) clearSavedView()
+                else {
+                  const view = savedViews.find((item) => item.id === e.target.value)
+                  if (view) applySavedView(view)
+                }
+              }}
             >
-              <option value="any">Match any selected tag</option>
-              <option value="all">Match all selected tags</option>
-              <option value="exclude">Exclude selected tags</option>
+              <option value="">None</option>
+              {savedViews.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="block">
-            <span className="field-label">Created from</span>
-            <input
-              type="date"
-              className="field-input"
-              value={filters.createdFrom}
-              onChange={(e) => setFilters({ createdFrom: e.target.value })}
-            />
-          </label>
-          <label className="block">
-            <span className="field-label">Created to</span>
-            <input
-              type="date"
-              className="field-input"
-              value={filters.createdTo}
-              onChange={(e) => setFilters({ createdTo: e.target.value })}
-            />
-          </label>
-          <label className="block">
-            <span className="field-label">Modified from</span>
-            <input
-              type="date"
-              className="field-input"
-              value={filters.modifiedFrom}
-              onChange={(e) => setFilters({ modifiedFrom: e.target.value })}
-            />
-          </label>
-          <label className="block">
-            <span className="field-label">Modified to</span>
-            <input
-              type="date"
-              className="field-input"
-              value={filters.modifiedTo}
-              onChange={(e) => setFilters({ modifiedTo: e.target.value })}
-            />
-          </label>
         </div>
-      </details>
+
+        {activeCount > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 rounded border border-[var(--color-line-strong)] bg-[var(--color-accent-soft)] px-2 py-1.5">
+            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)]">
+              {activeCount} field filter{activeCount === 1 ? '' : 's'}
+            </span>
+            {activeChips.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                className="inline-flex max-w-full items-center gap-1 rounded border border-[var(--color-line-strong)] bg-white px-1.5 py-0.5 text-left text-[0.7rem] text-[var(--color-ink)] hover:border-[var(--color-accent)]"
+                onClick={chip.onClear}
+                title={`Clear ${chip.label}`}
+              >
+                <span className="truncate">{chip.label}</span>
+                <span className="shrink-0 text-[var(--color-ink-muted)]" aria-hidden>
+                  ×
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <details>
+          <summary className="cursor-pointer text-[0.72rem] font-semibold text-[var(--color-accent)]">
+            Field filters & tags
+            {activeCount > 0 ? (
+              <span className="ml-1.5 rounded bg-[var(--color-accent)] px-1.5 py-0.5 text-[0.65rem] font-bold tracking-normal text-white">
+                {activeCount} active
+              </span>
+            ) : (
+              <span className="ml-1.5 font-normal text-[var(--color-ink-muted)]">none applied</span>
+            )}
+          </summary>
+          <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            <MultiSelect
+              label="Status"
+              options={project.lookups.statuses.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
+              values={filters.statusIds}
+              onChange={(statusIds) => setFilters({ statusIds })}
+            />
+            <MultiSelect
+              label="Classification"
+              options={project.lookups.classifications.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
+              values={filters.classificationIds}
+              onChange={(classificationIds) => setFilters({ classificationIds })}
+            />
+            <MultiSelect
+              label="Type"
+              options={project.lookups.types.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
+              values={filters.typeIds}
+              onChange={(typeIds) => setFilters({ typeIds })}
+            />
+            <MultiSelect
+              label="Priority"
+              options={project.lookups.priorities.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
+              values={filters.priorityIds}
+              onChange={(priorityIds) => setFilters({ priorityIds })}
+            />
+            <MultiSelect
+              label="Verification method"
+              options={project.lookups.verificationMethods.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
+              values={filters.verificationMethodIds}
+              onChange={(verificationMethodIds) => setFilters({ verificationMethodIds })}
+            />
+            <MultiSelect
+              label="Assessment result"
+              options={project.lookups.assessmentResults.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
+              values={filters.assessmentResultIds}
+              onChange={(assessmentResultIds) => setFilters({ assessmentResultIds })}
+            />
+            <MultiSelect
+              label="Test activity"
+              options={project.testActivities.map((t) => ({ id: t.id, label: t.title }))}
+              values={filters.testActivityIds}
+              onChange={(testActivityIds) => setFilters({ testActivityIds })}
+            />
+            <MultiSelect
+              label="Test phase"
+              options={project.lookups.testPhases.filter((s) => s.active).map((s) => ({ id: s.id, label: s.value }))}
+              values={filters.testPhaseIds}
+              onChange={(testPhaseIds) => setFilters({ testPhaseIds })}
+            />
+            <MultiSelect
+              label="Owner"
+              options={owners.map((o) => ({ id: o, label: o }))}
+              values={filters.owners}
+              onChange={(ownersVals) => setFilters({ owners: ownersVals })}
+            />
+            <MultiSelect
+              label="Source"
+              options={sources}
+              values={filters.sourceIds}
+              onChange={(sourceIds) => setFilters({ sourceIds })}
+            />
+            <MultiSelect
+              label="Tags"
+              options={project.tags.filter((t) => t.active).map((t) => ({ id: t.id, label: t.name }))}
+              values={filters.tagIds}
+              onChange={(tagIds) => setFilters({ tagIds })}
+            />
+            <label className="block">
+              <span className="field-label">Tag logic</span>
+              <select
+                className="field-input"
+                value={tagLogic}
+                onChange={(e) => setTagLogic(e.target.value as TagLogic)}
+              >
+                <option value="any">Match any selected tag</option>
+                <option value="all">Match all selected tags</option>
+                <option value="exclude">Exclude selected tags</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="field-label">Created from</span>
+              <input
+                type="date"
+                className="field-input"
+                value={filters.createdFrom}
+                onChange={(e) => setFilters({ createdFrom: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="field-label">Created to</span>
+              <input
+                type="date"
+                className="field-input"
+                value={filters.createdTo}
+                onChange={(e) => setFilters({ createdTo: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="field-label">Modified from</span>
+              <input
+                type="date"
+                className="field-input"
+                value={filters.modifiedFrom}
+                onChange={(e) => setFilters({ modifiedFrom: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="field-label">Modified to</span>
+              <input
+                type="date"
+                className="field-input"
+                value={filters.modifiedTo}
+                onChange={(e) => setFilters({ modifiedTo: e.target.value })}
+              />
+            </label>
+          </div>
+        </details>
+      </div>
     </div>
   )
 }

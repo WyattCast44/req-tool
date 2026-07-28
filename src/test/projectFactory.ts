@@ -19,6 +19,7 @@ export function createTestRequirement(
   return {
     id,
     sourceId: id.toUpperCase(),
+    sourceDocumentId: '',
     shortTitle: `Requirement ${id}`,
     requirementText: '<p>The system shall satisfy the requirement.</p>',
     statusId: lookupByValue(project.lookups.statuses, 'Active')!.id,

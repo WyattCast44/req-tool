@@ -1,17 +1,21 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
+import {
+  DetailField,
+  DetailNotFound,
+  DetailSection,
+  RichTextOrEmpty,
+  SummaryRow,
+} from '../components/DetailPrimitives'
 import { ConfirmDialog } from '../components/Modal'
 import { DataTable } from '../components/DataTable'
-import {
-  RequirementSourceLinkModal,
-  type RequirementSourceLinkDraft,
-} from '../components/RequirementSourceLinkModal'
+import { FuzzySelect } from '../components/FuzzySelect'
 import { RichTextEditor, RichTextView } from '../components/RichText'
-import { StatusBadge } from '../components/StatusBadge'
+import { StatusBadge, WatchItemStatusBadge } from '../components/StatusBadge'
 import { lookupLabel } from '../lib/defaults'
 import { formatDateTime } from '../lib/ids'
-import { countDistinctLinkedRequirements } from '../lib/sourceLinks'
+import { countRequirementsForSource } from '../lib/sourceLinks'
 import { fuzzyIncludesFilter, plainTextFromHtml } from '../lib/tableFilters'
 import { useProjectStore } from '../store/projectStore'
 import type { RequirementSourceLink, Source } from '../types/project'
@@ -26,7 +30,6 @@ interface AssociatedRequirementRow {
   locator: string
   rationale: string
   notes: string
-  link: RequirementSourceLink
 }
 
 const blankSource = (): Partial<Source> & { title: string } => ({
@@ -50,8 +53,6 @@ export function SourceDetailPage() {
   const editing = useProjectStore((state) => state.mode === 'edit')
   const upsertSource = useProjectStore((state) => state.upsertSource)
   const deleteSource = useProjectStore((state) => state.deleteSource)
-  const upsertLink = useProjectStore((state) => state.upsertRequirementSourceLink)
-  const deleteLink = useProjectStore((state) => state.deleteRequirementSourceLink)
   const setToast = useProjectStore((state) => state.setToast)
 
   const existing = useMemo(
@@ -63,8 +64,6 @@ export function SourceDetailPage() {
   )
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [linkOpen, setLinkOpen] = useState(false)
-  const [editingLink, setEditingLink] = useState<RequirementSourceLink | null>(null)
 
   useEffect(() => {
     setForm(existing ? { ...existing } : blankSource())
@@ -72,33 +71,54 @@ export function SourceDetailPage() {
   }, [existing, isNew])
 
   const sourceId = existing?.id
-  const links = useMemo(
-    () => (project.requirementSourceLinks ?? []).filter((link) => link.sourceId === sourceId),
-    [project.requirementSourceLinks, sourceId],
+  const ownedRequirements = useMemo(
+    () => project.requirements.filter((requirement) => sourceId && requirement.sourceDocumentId === sourceId),
+    [project.requirements, sourceId],
   )
+  const linksByRequirementId = useMemo(() => {
+    const map = new Map<string, RequirementSourceLink>()
+    for (const link of project.requirementSourceLinks ?? []) {
+      if (link.sourceId !== sourceId) continue
+      if (!map.has(link.requirementId)) map.set(link.requirementId, link)
+    }
+    return map
+  }, [project.requirementSourceLinks, sourceId])
+  const linkedWatchItems = useMemo(
+    () => project.watchItems.filter((watchItem) => sourceId && watchItem.sourceIds.includes(sourceId)),
+    [project.watchItems, sourceId],
+  )
+  const sourceTypeOptions = useMemo(() => {
+    const types = new Set<string>()
+    for (const source of project.sources ?? []) {
+      const type = source.sourceType?.trim()
+      if (type) types.add(type)
+    }
+    return [...types]
+      .sort((a, b) => a.localeCompare(b))
+      .map((type) => ({ id: type, label: type }))
+  }, [project.sources])
 
   const associatedRows = useMemo<AssociatedRequirementRow[]>(
     () =>
-      links.map((link) => {
-        const requirement = project.requirements.find((item) => item.id === link.requirementId)
+      ownedRequirements.map((requirement) => {
+        const link = linksByRequirementId.get(requirement.id)
         return {
-          id: link.id,
-          requirementId: link.requirementId,
-          sourceIdLabel: requirement?.sourceId || 'Missing',
-          shortTitle: requirement?.shortTitle || '',
-          status: lookupLabel(project.lookups.statuses, requirement?.statusId || ''),
-          type: link.type,
-          locator: link.locator || '',
-          rationale: link.rationale || '',
-          notes: link.notes || '',
-          link,
+          id: requirement.id,
+          requirementId: requirement.id,
+          sourceIdLabel: requirement.sourceId || 'Missing',
+          shortTitle: requirement.shortTitle || '',
+          status: lookupLabel(project.lookups.statuses, requirement.statusId),
+          type: link?.type || '',
+          locator: link?.locator || '',
+          rationale: link?.rationale || '',
+          notes: link?.notes || '',
         }
       }),
-    [links, project.lookups.statuses, project.requirements],
+    [linksByRequirementId, ownedRequirements, project.lookups.statuses],
   )
 
-  const associatedColumns = useMemo<ColumnDef<AssociatedRequirementRow>[]>(() => {
-    const defs: ColumnDef<AssociatedRequirementRow>[] = [
+  const associatedColumns = useMemo<ColumnDef<AssociatedRequirementRow>[]>(
+    () => [
       {
         id: 'requirement',
         accessorFn: (row) =>
@@ -129,7 +149,8 @@ export function SourceDetailPage() {
       },
       {
         accessorKey: 'type',
-        header: 'Relationship',
+        header: 'Citation',
+        cell: ({ getValue }) => getValue<string>() || '—',
         filterFn: (row, _id, value) => fuzzyIncludesFilter(row.original.type, value),
         size: 130,
       },
@@ -156,51 +177,17 @@ export function SourceDetailPage() {
           fuzzyIncludesFilter(plainTextFromHtml(row.original.notes), value),
         size: 180,
       },
-    ]
-
-    if (editing) {
-      defs.push({
-        id: 'actions',
-        header: 'Actions',
-        cell: ({ row }) => (
-          <div className="flex gap-1">
-            <button
-              type="button"
-              className="btn btn-ghost px-1.5 py-0.5 text-xs"
-              onClick={() => {
-                setEditingLink(row.original.link)
-                setLinkOpen(true)
-              }}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost px-1.5 py-0.5 text-xs text-[var(--color-danger)]"
-              onClick={() => deleteLink(row.original.id)}
-            >
-              Unlink
-            </button>
-          </div>
-        ),
-        enableSorting: false,
-        enableColumnFilter: false,
-        enableHiding: false,
-        size: 130,
-      })
-    }
-
-    return defs
-  }, [deleteLink, editing])
+    ],
+    [],
+  )
 
   if (!isNew && !existing) {
     return (
-      <div className="panel p-6">
-        <p>Source not found.</p>
-        <Link className="btn btn-secondary mt-3" to="/sources">
-          Back to sources
-        </Link>
-      </div>
+      <DetailNotFound
+        message="Source not found."
+        backTo="/sources"
+        backLabel="Back to sources"
+      />
     )
   }
 
@@ -223,45 +210,22 @@ export function SourceDetailPage() {
     navigate(`/sources/${result.id}`, { replace: true })
   }
 
-  const saveLink = (draft: RequirementSourceLinkDraft) => {
-    if (!sourceId) return
-    const result = upsertLink(
-      {
-        id: draft.id,
-        requirementId: draft.selectedId,
-        sourceId,
-        type: draft.type,
-        locator: draft.locator,
-        rationale: draft.rationale,
-        notes: draft.notes,
-      },
-      editorName,
-    )
-    if (!result.ok) {
-      setToast(result.error || 'Could not save source relationship.')
-      return
-    }
-    setToast(result.warning || 'Source relationship saved.')
-    setLinkOpen(false)
-    setEditingLink(null)
-  }
-
   return (
     <div className="space-y-3">
-      <header className="panel requirement-hero">
+      <header className="panel detail-hero">
         <div className="min-w-0">
-          <Link to="/sources" className="requirement-breadcrumb">
+          <Link to="/sources" className="detail-breadcrumb">
             ← All sources
           </Link>
-          <div className="mt-2 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[var(--color-ink-muted)]">
+          <div className="eyebrow detail-eyebrow">
             {isNew ? 'Create source' : `Source · ${form.identifier || 'No identifier'}`}
           </div>
-          <h2 className="requirement-title">{isNew ? 'New source' : form.title}</h2>
+          <h2 className="detail-title">{isNew ? 'New source' : form.title}</h2>
           {!isNew && form.identifier && (
             <div className="mono mt-1 text-[var(--color-ink-muted)]">{form.identifier}</div>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="page-header-actions">
           {editing && !isNew && (
             <button type="button" className="btn btn-danger" onClick={() => setConfirmDelete(true)}>
               Delete
@@ -275,115 +239,178 @@ export function SourceDetailPage() {
         </div>
       </header>
 
-      {error && (
-        <div className="panel border-[var(--color-danger)] bg-[var(--color-danger-bg)] p-3 text-sm text-[var(--color-danger)]">
-          {error}
-        </div>
-      )}
+      {error && <div className="error-banner">{error}</div>}
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-3">
-          <SourceSection
-            title="Source details"
-            description="Identify and locate this source material."
-          >
-            {editing ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                <SourceField label="Identifier">
-                  <input className="field-input" value={form.identifier || ''} onChange={(event) => setForm((value) => ({ ...value, identifier: event.target.value }))} />
-                </SourceField>
-                <SourceField label="Title" required>
-                  <input className="field-input" value={form.title} onChange={(event) => setForm((value) => ({ ...value, title: event.target.value }))} />
-                </SourceField>
-                <SourceField label="Type">
-                  <input className="field-input" placeholder="Document, standard, interview…" value={form.sourceType || ''} onChange={(event) => setForm((value) => ({ ...value, sourceType: event.target.value }))} />
-                </SourceField>
-                <SourceField label="Version">
-                  <input className="field-input" value={form.version || ''} onChange={(event) => setForm((value) => ({ ...value, version: event.target.value }))} />
-                </SourceField>
-                <SourceField label="Publisher / owner">
-                  <input className="field-input" value={form.publisher || ''} onChange={(event) => setForm((value) => ({ ...value, publisher: event.target.value }))} />
-                </SourceField>
-                <SourceField label="Publication date">
-                  <input type="date" className="field-input" value={form.publicationDate || ''} onChange={(event) => setForm((value) => ({ ...value, publicationDate: event.target.value }))} />
-                </SourceField>
-                <SourceField label="URL">
-                  <input className="field-input" value={form.url || ''} onChange={(event) => setForm((value) => ({ ...value, url: event.target.value }))} />
-                </SourceField>
-                <SourceField label="File path">
-                  <input className="field-input" value={form.filePath || ''} onChange={(event) => setForm((value) => ({ ...value, filePath: event.target.value }))} />
-                </SourceField>
-              </div>
-            ) : (
-              <dl className="summary-list">
-                <Summary label="Identifier" value={form.identifier || '—'} />
-                <Summary label="Type" value={form.sourceType || '—'} />
-                <Summary label="Version" value={form.version || '—'} />
-                <Summary label="Publisher / owner" value={form.publisher || '—'} />
-                <Summary label="Publication date" value={form.publicationDate || '—'} />
-                <Summary label="URL" value={form.url || '—'} />
-                <Summary label="File path" value={form.filePath || '—'} />
-              </dl>
-            )}
-          </SourceSection>
+          <DetailSection title="Identity" description="How this source is identified and classified.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <DetailField label="Title" required>
+                {editing ? (
+                  <input
+                    className="field-input"
+                    value={form.title}
+                    onChange={(e) => setForm((value) => ({ ...value, title: e.target.value }))}
+                  />
+                ) : (
+                  <div>{form.title || '—'}</div>
+                )}
+              </DetailField>
+              <DetailField label="Identifier">
+                {editing ? (
+                  <input
+                    className="field-input"
+                    value={form.identifier || ''}
+                    onChange={(e) => setForm((value) => ({ ...value, identifier: e.target.value }))}
+                  />
+                ) : (
+                  <div className="mono">{form.identifier || '—'}</div>
+                )}
+              </DetailField>
+              <DetailField label="Source type">
+                {editing ? (
+                  <FuzzySelect
+                    options={sourceTypeOptions}
+                    value={form.sourceType || ''}
+                    onChange={(sourceType) => setForm((value) => ({ ...value, sourceType }))}
+                    placeholder="Search or type a source type…"
+                    emptyLabel="No type"
+                    allowClear
+                    allowCustom
+                  />
+                ) : (
+                  <div>{form.sourceType || '—'}</div>
+                )}
+              </DetailField>
+              <DetailField label="Version">
+                {editing ? (
+                  <input
+                    className="field-input"
+                    value={form.version || ''}
+                    onChange={(e) => setForm((value) => ({ ...value, version: e.target.value }))}
+                  />
+                ) : (
+                  <div>{form.version || '—'}</div>
+                )}
+              </DetailField>
+              <DetailField label="Publisher">
+                {editing ? (
+                  <input
+                    className="field-input"
+                    value={form.publisher || ''}
+                    onChange={(e) => setForm((value) => ({ ...value, publisher: e.target.value }))}
+                  />
+                ) : (
+                  <div>{form.publisher || '—'}</div>
+                )}
+              </DetailField>
+              <DetailField label="Publication date">
+                {editing ? (
+                  <input
+                    className="field-input"
+                    type="date"
+                    value={form.publicationDate || ''}
+                    onChange={(e) =>
+                      setForm((value) => ({ ...value, publicationDate: e.target.value }))
+                    }
+                  />
+                ) : (
+                  <div>{form.publicationDate || '—'}</div>
+                )}
+              </DetailField>
+            </div>
+          </DetailSection>
 
-          <SourceSection title="Description" description="Scope, authority, and context for this source.">
+          <DetailSection title="Access" description="Where this source can be retrieved.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <DetailField label="URL">
+                {editing ? (
+                  <input
+                    className="field-input"
+                    value={form.url || ''}
+                    onChange={(e) => setForm((value) => ({ ...value, url: e.target.value }))}
+                  />
+                ) : form.url ? (
+                  <a
+                    className="text-[var(--color-accent)] hover:underline"
+                    href={form.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {form.url}
+                  </a>
+                ) : (
+                  <div>—</div>
+                )}
+              </DetailField>
+              <DetailField label="File path">
+                {editing ? (
+                  <input
+                    className="field-input"
+                    value={form.filePath || ''}
+                    onChange={(e) => setForm((value) => ({ ...value, filePath: e.target.value }))}
+                  />
+                ) : (
+                  <div className="mono break-all">{form.filePath || '—'}</div>
+                )}
+              </DetailField>
+            </div>
+          </DetailSection>
+
+          <DetailSection title="Description" description="What this source covers and why it matters.">
             {editing ? (
-              <RichTextEditor value={form.description || ''} onChange={(description) => setForm((value) => ({ ...value, description }))} />
+              <RichTextEditor
+                value={form.description || ''}
+                onChange={(description) => setForm((value) => ({ ...value, description }))}
+              />
             ) : (
               <RichTextOrEmpty html={form.description || ''} />
             )}
-          </SourceSection>
+          </DetailSection>
 
-          <SourceSection title="Notes" description="Working notes about interpretation, access, or use.">
+          <DetailSection title="Notes" description="Working notes about interpretation, access, or use.">
             {editing ? (
               <RichTextEditor value={form.notes || ''} onChange={(notes) => setForm((value) => ({ ...value, notes }))} />
             ) : (
               <RichTextOrEmpty html={form.notes || ''} />
             )}
-          </SourceSection>
+          </DetailSection>
         </div>
 
         <aside className="space-y-3">
-          <SourceSection title="At a glance">
+          <DetailSection title="At a glance">
             <dl className="summary-list">
-              <Summary
-                label="Linked requirements"
-                value={String(countDistinctLinkedRequirements(links, sourceId))}
+              <SummaryRow
+                label="Requirements"
+                value={String(countRequirementsForSource(project.requirements, sourceId))}
               />
+              <SummaryRow label="Linked watch items" value={String(linkedWatchItems.length)} />
               {!isNew && existing && (
                 <>
-                  <Summary label="Created" value={formatDateTime(existing.createdAt)} />
-                  <Summary label="Modified" value={formatDateTime(existing.modifiedAt)} />
-                  <Summary label="Editor" value={existing.editorName || '—'} />
+                  <SummaryRow label="Created" value={formatDateTime(existing.createdAt)} />
+                  <SummaryRow label="Modified" value={formatDateTime(existing.modifiedAt)} />
+                  <SummaryRow label="Editor" value={existing.editorName || '—'} />
                 </>
               )}
             </dl>
-          </SourceSection>
+          </DetailSection>
         </aside>
       </div>
 
       {!isNew && sourceId && (
-        <SourceSection
-          title="Associated requirements"
-          description="Typed relationships from requirements to this source, including pinpoint locators and contextual notes."
+        <DetailSection
+          title="Requirements"
+          description="Requirements that list this document as their source."
           action={
             editing ? (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  setEditingLink(null)
-                  setLinkOpen(true)
-                }}
-              >
-                Link Requirement
-              </button>
+              <Link className="btn btn-secondary" to={`/requirements/new?source=${sourceId}`}>
+                New Requirement
+              </Link>
             ) : undefined
           }
         >
           {associatedRows.length === 0 ? (
-            <p className="text-sm text-[var(--color-ink-muted)]">No requirements are linked to this source.</p>
+            <p className="empty-copy">No requirements use this source document yet.</p>
           ) : (
             <DataTable
               data={associatedRows}
@@ -393,28 +420,45 @@ export function SourceDetailPage() {
               urlStateKey=""
               maxHeightClassName="max-h-[50vh]"
               sizingStorageKey="source-associated-requirements"
-              emptyMessage="No linked requirements match the current column filters."
+              emptyMessage="No requirements match the current column filters."
             />
           )}
-        </SourceSection>
+        </DetailSection>
       )}
 
-      <RequirementSourceLinkModal
-        open={linkOpen}
-        title={editingLink ? 'Edit Requirement Relationship' : 'Link Requirement'}
-        selectionLabel="Requirement"
-        options={project.requirements.map((requirement) => ({
-          id: requirement.id,
-          label: `${requirement.sourceId} — ${requirement.shortTitle || 'Untitled'}`,
-        }))}
-        initialLink={editingLink}
-        initialSelectedId={editingLink?.requirementId}
-        onClose={() => {
-          setLinkOpen(false)
-          setEditingLink(null)
-        }}
-        onSave={saveLink}
-      />
+      {!isNew && sourceId && (
+        <DetailSection
+          title="Watch Items"
+          description="Standalone watch topics linked to this source."
+          action={
+            editing ? (
+              <Link className="btn btn-secondary" to={`/watch-items/new?source=${sourceId}`}>
+                New Watch Item
+              </Link>
+            ) : undefined
+          }
+        >
+          {linkedWatchItems.length === 0 ? (
+            <p className="empty-copy">No watch items are linked to this source.</p>
+          ) : (
+            <ul className="space-y-2">
+              {linkedWatchItems.map((watchItem) => (
+                <li key={watchItem.id} className="record-card record-card-row">
+                  <div>
+                    <Link className="font-semibold text-[var(--color-accent)] hover:underline" to={`/watch-items/${watchItem.id}`}>
+                      {watchItem.title}
+                    </Link>
+                    <div className="record-meta">
+                      {watchItem.observations.length} observation{watchItem.observations.length === 1 ? '' : 's'}
+                    </div>
+                  </div>
+                  <WatchItemStatusBadge value={watchItem.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </DetailSection>
+      )}
 
       <ConfirmDialog
         open={confirmDelete}
@@ -424,65 +468,16 @@ export function SourceDetailPage() {
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => {
           if (!sourceId) return
-          deleteSource(sourceId)
+          deleteSource(sourceId, editorName)
           navigate('/sources')
         }}
         message={
           <p>
-            Delete <strong>{form.title}</strong> and remove its {links.length} requirement relationship
-            {links.length === 1 ? '' : 's'}? This cannot be undone.
+            Delete <strong>{form.title}</strong> and clear it from {ownedRequirements.length} requirement
+            {ownedRequirements.length === 1 ? '' : 's'}? This cannot be undone.
           </p>
         }
       />
     </div>
   )
-}
-
-function SourceField({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
-  return (
-    <label>
-      <span className="field-label">{label}{required ? ' *' : ''}</span>
-      {children}
-    </label>
-  )
-}
-
-function SourceSection({
-  title,
-  description,
-  action,
-  children,
-}: {
-  title: string
-  description?: string
-  action?: ReactNode
-  children: ReactNode
-}) {
-  return (
-    <section className="panel detail-section">
-      <div className="detail-section-header">
-        <div>
-          <h3>{title}</h3>
-          {description && <p className="mt-0.5 text-[0.7rem] text-[var(--color-ink-muted)]">{description}</p>}
-        </div>
-        {action}
-      </div>
-      <div className="detail-section-body">{children}</div>
-    </section>
-  )
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="summary-row">
-      <dt>{label}</dt>
-      <dd className="break-words">{value}</dd>
-    </div>
-  )
-}
-
-function RichTextOrEmpty({ html }: { html: string }) {
-  return html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
-    ? <RichTextView html={html} />
-    : <p className="text-sm italic text-[var(--color-ink-muted)]">Not provided.</p>
 }

@@ -129,6 +129,7 @@ export function createEmptyProject(name = 'New Operational Test Project'): Proje
     tagCategories: createDefaultTagCategories(),
     tags: [],
     requirements: [],
+    watchItems: [],
     relationships: [],
     sources: [],
     requirementSourceLinks: [],

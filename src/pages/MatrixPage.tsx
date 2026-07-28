@@ -5,6 +5,7 @@ import { filterRequirements } from '../lib/filters'
 import { RELATIONSHIP_TYPES, type RelationshipType, type Requirement } from '../types/project'
 import { downloadTextFile, matrixToCsv } from '../lib/export'
 import { FilterPanel } from '../components/FilterPanel'
+import { PageHeader } from '../components/PageHeader'
 import { DataTable } from '../components/DataTable'
 import { RequirementHoverLink } from '../components/RequirementHoverLink'
 import { useMatrixUrlState, useRequirementViewState } from '../lib/urlState'
@@ -125,46 +126,48 @@ export function MatrixPage() {
 
   return (
     <div className="space-y-2.5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="page-title">Traceability Matrix</h2>
-          <p className="page-subtitle">
-            Filtered set: {filtered.length} requirements. Paginated for usability up to 1,000 records.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() =>
-            downloadTextFile(
-              `${project.metadata.name.replace(/\s+/g, '_')}_traceability_matrix.csv`,
-              matrixToCsv(project, exportRows),
-              'text/csv',
-            )
-          }
-        >
-          Export Matrix CSV
-        </button>
-      </div>
+      <PageHeader
+        title="Traceability Matrix"
+        subtitle={`Filtered set: ${filtered.length} requirements. Paginated for usability up to 1,000 records.`}
+        actions={
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              downloadTextFile(
+                `${project.metadata.name.replace(/\s+/g, '_')}_traceability_matrix.csv`,
+                matrixToCsv(project, exportRows),
+                'text/csv',
+              )
+            }
+          >
+            Export Matrix CSV
+          </button>
+        }
+      />
 
       <FilterPanel />
 
-      <div className="panel p-4">
-        <div className="mb-3 text-sm font-semibold">Relationship types</div>
-        <div className="flex flex-wrap gap-3">
-          {RELATIONSHIP_TYPES.map((type) => (
-            <label key={type} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={matrixTypes.includes(type)}
-                onChange={(e) => {
-                  if (e.target.checked) setMatrixTypes([...matrixTypes, type])
-                  else setMatrixTypes(matrixTypes.filter((t) => t !== type))
-                }}
-              />
-              {type}
-            </label>
-          ))}
+      <div className="panel">
+        <div className="panel-header">
+          <h3>Relationship types</h3>
+        </div>
+        <div className="panel-body">
+          <div className="flex flex-wrap gap-3">
+            {RELATIONSHIP_TYPES.map((type) => (
+              <label key={type} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={matrixTypes.includes(type)}
+                  onChange={(e) => {
+                    if (e.target.checked) setMatrixTypes([...matrixTypes, type])
+                    else setMatrixTypes(matrixTypes.filter((t) => t !== type))
+                  }}
+                />
+                {type}
+              </label>
+            ))}
+          </div>
         </div>
       </div>
 

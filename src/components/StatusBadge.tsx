@@ -1,3 +1,5 @@
+import type { WatchItemStatus } from '../types/project'
+
 const STATUS_STYLES: Record<string, string> = {
   Draft: 'bg-slate-100 text-slate-700 border-slate-300',
   Active: 'bg-[var(--color-ok-bg)] text-[var(--color-ok)] border-green-300',
@@ -32,4 +34,26 @@ export function ClassificationBadge({ value }: { value: string }) {
   return (
     <span className="badge border-slate-400 bg-white text-slate-800 tracking-wide">{value || '—'}</span>
   )
+}
+
+export function WatchBadge({ compact = false }: { compact?: boolean }) {
+  return (
+    <span
+      className="badge border-amber-400 bg-[var(--color-warn-bg)] text-[var(--color-warn)]"
+      title="Linked to one or more Watch Items"
+    >
+      {compact ? 'WATCH' : 'Watch Item'}
+    </span>
+  )
+}
+
+const WATCH_ITEM_STATUS_STYLES: Record<WatchItemStatus, string> = {
+  Open: 'border-amber-400 bg-[var(--color-warn-bg)] text-[var(--color-warn)]',
+  Monitoring: 'border-blue-300 bg-blue-50 text-blue-800',
+  Resolved: 'border-green-300 bg-[var(--color-ok-bg)] text-[var(--color-ok)]',
+  Closed: 'border-slate-300 bg-slate-100 text-slate-700',
+}
+
+export function WatchItemStatusBadge({ value }: { value: WatchItemStatus }) {
+  return <span className={`badge ${WATCH_ITEM_STATUS_STYLES[value]}`}>{value}</span>
 }

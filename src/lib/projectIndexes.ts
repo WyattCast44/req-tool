@@ -6,6 +6,7 @@ import type {
   RequirementRelationship,
   VerificationRecord,
 } from '../types/project'
+import { groupBy, indexById } from './collections'
 import { lookupByValue } from './defaults'
 
 export interface RelationshipFlags {
@@ -40,23 +41,20 @@ function emptyFlags(): RelationshipFlags {
   }
 }
 
-function pushMap<T>(map: Map<string, T[]>, key: string, value: T) {
-  const list = map.get(key)
-  if (list) list.push(value)
-  else map.set(key, [value])
-}
-
 export function buildProjectIndexes(project: ProjectData): ProjectIndexes {
   const reqIds = new Set(project.requirements.map((r) => r.id))
-  const activityById = new Map(project.testActivities.map((t) => [t.id, t]))
-  const evidenceById = new Map(project.evidence.map((e) => [e.id, e]))
-  const sourceById = new Map((project.sources ?? []).map((source) => [source.id, source]))
-  const sourceLinksByReq = new Map<string, ProjectData['requirementSourceLinks'][number][]>()
-  for (const link of project.requirementSourceLinks ?? []) {
-    pushMap(sourceLinksByReq, link.requirementId, link)
-  }
+  const activityById = indexById(project.testActivities)
+  const evidenceById = indexById(project.evidence)
+  const sourceById = indexById(project.sources ?? [])
+  const sourceLinksByReq = groupBy(
+    project.requirementSourceLinks ?? [],
+    (link) => link.requirementId,
+  )
 
-  const verificationsByReq = new Map<string, VerificationRecord[]>()
+  const verificationsByReq = groupBy(
+    project.verifications,
+    (verification) => verification.requirementId,
+  )
   const reqsWithMethod = new Set<string>()
   const reqsWithEvidence = new Set<string>()
 
@@ -65,22 +63,23 @@ export function buildProjectIndexes(project: ProjectData): ProjectIndexes {
   }
 
   for (const v of project.verifications) {
-    pushMap(verificationsByReq, v.requirementId, v)
     if (v.methodId) reqsWithMethod.add(v.requirementId)
     if (v.evidenceIds.length > 0) reqsWithEvidence.add(v.requirementId)
   }
 
-  const linksByReq = new Map<string, RequirementActivityLink[]>()
+  const linksByReq = groupBy(
+    project.requirementActivityLinks,
+    (link) => link.requirementId,
+  )
   const reqsWithActivity = new Set<string>()
   for (const link of project.requirementActivityLinks) {
-    pushMap(linksByReq, link.requirementId, link)
     reqsWithActivity.add(link.requirementId)
   }
 
-  const assessmentsByReq = new Map<string, AssessmentRecord[]>()
-  for (const a of project.assessments) {
-    pushMap(assessmentsByReq, a.requirementId, a)
-  }
+  const assessmentsByReq = groupBy(
+    project.assessments,
+    (assessment) => assessment.requirementId,
+  )
 
   const currentAssessmentByReq = new Map<string, AssessmentRecord | undefined>()
   for (const [reqId, list] of assessmentsByReq) {

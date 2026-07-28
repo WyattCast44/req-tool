@@ -293,6 +293,14 @@ export function createRequirementsDocx({
 
     addListSection(
       children,
+      'Linked watch items',
+      project.watchItems
+        .filter((watchItem) => watchItem.requirementIds.includes(requirement.id))
+        .map((watchItem) => `${watchItem.title} — ${watchItem.status}`),
+    )
+
+    addListSection(
+      children,
       'Verification records',
       verifications.map((verification) => {
         const method = lookupLabel(

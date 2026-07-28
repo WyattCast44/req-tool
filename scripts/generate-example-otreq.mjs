@@ -151,6 +151,7 @@ const ev = {
 
 function requirement(partial) {
   return {
+    sourceDocumentId: id(4501),
     description: '',
     analystNotes: '',
     rationale: '',
@@ -390,6 +391,56 @@ const project = {
       modifiedAt: ts3,
       editorName: 'A. Rivera',
     }),
+  ],
+  watchItems: [
+    {
+      id: id(4701),
+      title: 'Confirm communications measurement points',
+      description:
+        '<p>Resolve the end-to-end latency measurement boundary before the OT-1 readiness review.</p>',
+      status: 'Monitoring',
+      observations: [
+        {
+          id: id(4711),
+          text: '<p>Instrumentation working group has two candidate measurement-point definitions.</p>',
+          createdAt: ts2,
+          modifiedAt: ts2,
+          editorName: 'A. Rivera',
+        },
+        {
+          id: id(4712),
+          text: '<p>Program office will adjudicate the definition at the next technical interchange.</p>',
+          createdAt: ts3,
+          modifiedAt: ts3,
+          editorName: 'J. Chen',
+        },
+      ],
+      requirementIds: [req.r3, req.r5],
+      sourceIds: [id(4501)],
+      createdAt: ts2,
+      modifiedAt: ts3,
+      editorName: 'J. Chen',
+    },
+    {
+      id: id(4702),
+      title: 'Night-condition operator workload',
+      description: '<p>Track potential workload growth during night surveillance scenarios.</p>',
+      status: 'Open',
+      observations: [
+        {
+          id: id(4721),
+          text: '<p>Early tabletop feedback indicates alert acknowledgement may compete with track management.</p>',
+          createdAt: ts3,
+          modifiedAt: ts3,
+          editorName: 'A. Rivera',
+        },
+      ],
+      requirementIds: [],
+      sourceIds: [],
+      createdAt: ts3,
+      modifiedAt: ts3,
+      editorName: 'A. Rivera',
+    },
   ],
   relationships: [
     {
@@ -833,7 +884,7 @@ const project = {
 
 const outDir = join(root, 'examples')
 mkdirSync(outDir, { recursive: true })
-const filename = 'EaglesNest_Requirements_v001_2026-07-26.otreq'
+const filename = 'Requirements_SIMPLE_v001_2026-07-26.otreq'
 const outPath = join(outDir, filename)
 writeFileSync(outPath, JSON.stringify(project, null, 2) + '\n')
 console.log(`Wrote ${outPath}`)

@@ -9,6 +9,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 const NAV = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/requirements', label: 'Requirements' },
+  { to: '/watch-items', label: 'Watch Items' },
   { to: '/sources', label: 'Sources' },
   { to: '/matrix', label: 'Matrix' },
   { to: '/graph', label: 'Graph' },
@@ -57,8 +58,34 @@ export function AppShell() {
 
   if (!project) return <Outlet />
 
+  if (!Array.isArray(project.watchItems)) {
+    return (
+      <div className="flex min-h-full items-center justify-center p-6">
+        <div className="panel max-w-xl p-5">
+          <h1 className="text-lg font-semibold">Cached workspace is from an incompatible development schema</h1>
+          <p className="mt-2 text-sm text-[var(--color-ink-muted)]">
+            This browser workspace predates standalone Watch Items and cannot be loaded safely.
+            The cached record has not been deleted.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary mt-4"
+            onClick={() => {
+              void discardLocalAndClear().then(() => navigate('/welcome'))
+            }}
+          >
+            Ignore Cached Workspace
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const label = stateLabel()
   const editing = mode === 'edit'
+  const watchItemCount = (project.watchItems ?? []).filter(
+    (watchItem) => watchItem.status === 'Open' || watchItem.status === 'Monitoring',
+  ).length
   const scopedViewRoutes = new Set(['/requirements', '/matrix', '/reports'])
   const navTarget = (to: string) =>
     scopedViewRoutes.has(location.pathname) && scopedViewRoutes.has(to)
@@ -89,16 +116,18 @@ export function AppShell() {
           }`}
         >
           <div className="mx-auto flex max-w-[1700px] items-center gap-3 px-3 py-1.5">
-            <div className="min-w-0 shrink-0">
+            <div className="min-w-0 flex-1">
               <div className="truncate text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
-                OT Requirements Manager
+                OT Management Tool
               </div>
               <div className="truncate text-[0.92rem] font-semibold leading-tight">{project.metadata.name}</div>
             </div>
 
-            <GlobalSearch />
+            <div className="w-full max-w-xl shrink">
+              <GlobalSearch />
+            </div>
 
-            <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5">
               <span
                 className={`badge ${
                   hasUnexportedChanges
@@ -177,9 +206,7 @@ export function AppShell() {
       <div className="mx-auto flex w-full max-w-[1700px] flex-1 gap-0 md:gap-3 px-0 md:px-3 pt-0 pb-36 md:pt-4">
         <nav className="no-print hidden w-[11.5rem] shrink-0 md:block">
           <div className="panel app-side-nav sticky overflow-hidden">
-            <div className="border-b border-[var(--color-line)] bg-[var(--color-panel)] px-2 py-1.5 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
-              Navigate
-            </div>
+            <div className="panel-header">Navigate</div>
             <ul className="flex flex-col p-1">
               {NAV.map((item) => (
                 <li key={item.to}>
@@ -194,14 +221,24 @@ export function AppShell() {
                       }`
                     }
                   >
-                    {item.label}
+                    <span className="flex items-center justify-between gap-2">
+                      {item.label}
+                      {item.to === '/watch-items' && watchItemCount > 0 && (
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[0.58rem] tabular-nums ${
+                            location.pathname === item.to
+                              ? 'bg-white/20 text-white'
+                              : 'bg-amber-100 text-amber-900'
+                          }`}
+                        >
+                          {watchItemCount}
+                        </span>
+                      )}
+                    </span>
                   </NavLink>
                 </li>
               ))}
             </ul>
-            <div className="border-t border-[var(--color-line)] px-2 py-1.5 text-[0.62rem] text-[var(--color-ink-muted)]">
-              {project.requirements.length} reqs · {(project.sources ?? []).length} sources · {project.relationships.length} rels
-            </div>
           </div>
         </nav>
 
@@ -232,7 +269,7 @@ export function AppShell() {
         <div className="no-print fixed bottom-3 right-3 z-50 max-w-sm border border-[var(--color-line-strong)] bg-white px-3 py-2 shadow-lg">
           <div className="flex items-start justify-between gap-3">
             <p className="text-[0.75rem]">{toast}</p>
-            <button type="button" className="btn btn-ghost px-1.5 py-0.5 text-[0.65rem]" onClick={() => setToast(null)}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setToast(null)}>
               Dismiss
             </button>
           </div>

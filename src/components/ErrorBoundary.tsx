@@ -23,8 +23,8 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="panel border-[var(--color-danger)] bg-[var(--color-danger-bg)] p-3 text-[0.8rem] text-[var(--color-danger)]">
-          <div className="font-semibold">{this.props.title || 'Something went wrong in this view'}</div>
+        <div className="panel notice notice-danger">
+          <div className="notice-title">{this.props.title || 'Something went wrong in this view'}</div>
           <p className="mt-1">{this.state.error.message}</p>
           <button
             type="button"

@@ -37,6 +37,10 @@ export const RECIPROCAL_RELATIONSHIP: Partial<Record<RelationshipType, Relations
 
 export type ProjectMode = 'review' | 'edit'
 
+export const WATCH_ITEM_STATUSES = ['Open', 'Monitoring', 'Resolved', 'Closed'] as const
+
+export type WatchItemStatus = (typeof WATCH_ITEM_STATUSES)[number]
+
 export type ProjectStateLabel =
   | 'Review Mode — no local changes'
   | 'Edit Mode — no unexported changes'
@@ -158,6 +162,8 @@ export interface RequirementSourceLink {
 export interface Requirement {
   id: string
   sourceId: string
+  /** Primary Source document this requirement belongs to (empty when unset). */
+  sourceDocumentId: string
   shortTitle: string
   requirementText: string
   statusId: string
@@ -175,6 +181,27 @@ export interface Requirement {
   modifiedAt: string
   editorName: string
   changeSummary: string
+}
+
+export interface WatchObservation {
+  id: string
+  text: string
+  createdAt: string
+  modifiedAt: string
+  editorName: string
+}
+
+export interface WatchItem {
+  id: string
+  title: string
+  description: string
+  status: WatchItemStatus
+  observations: WatchObservation[]
+  requirementIds: string[]
+  sourceIds: string[]
+  createdAt: string
+  modifiedAt: string
+  editorName: string
 }
 
 export interface TestActivity {
@@ -272,6 +299,7 @@ export interface ProjectData {
   tagCategories: TagCategory[]
   tags: Tag[]
   requirements: Requirement[]
+  watchItems: WatchItem[]
   relationships: RequirementRelationship[]
   sources: Source[]
   requirementSourceLinks: RequirementSourceLink[]

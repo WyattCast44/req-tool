@@ -58,6 +58,7 @@ export function createSampleProject(): ProjectData {
   const r2 = newId()
   const r3 = newId()
   const evidenceId = newId()
+  const srdSourceId = newId()
 
   project.evidence = [
     {
@@ -75,6 +76,7 @@ export function createSampleProject(): ProjectData {
     {
       id: r1,
       sourceId: 'SRD-001',
+      sourceDocumentId: srdSourceId,
       shortTitle: 'Detect surface contacts',
       requirementText:
         '<p>The system <strong>shall</strong> detect surface contacts within the assigned surveillance area.</p>',
@@ -97,6 +99,7 @@ export function createSampleProject(): ProjectData {
     {
       id: r2,
       sourceId: 'SRD-002',
+      sourceDocumentId: srdSourceId,
       shortTitle: 'Report track quality',
       requirementText:
         '<p>The system shall report track quality metrics to the operator workstation.</p>',
@@ -119,6 +122,7 @@ export function createSampleProject(): ProjectData {
     {
       id: r3,
       sourceId: 'SRD-010',
+      sourceDocumentId: srdSourceId,
       shortTitle: 'Comms latency threshold',
       requirementText:
         '<p>End-to-end communications latency shall not exceed <em>2 seconds</em> under OT conditions.</p>',
@@ -140,7 +144,6 @@ export function createSampleProject(): ProjectData {
     },
   ]
 
-  const srdSourceId = newId()
   project.sources = [
     {
       id: srdSourceId,
@@ -192,6 +195,29 @@ export function createSampleProject(): ProjectData {
       locator: '§ 3.4.1',
       rationale: '',
       notes: '',
+      createdAt: ts,
+      modifiedAt: ts,
+      editorName: 'Demo Analyst',
+    },
+  ]
+  project.watchItems = [
+    {
+      id: newId(),
+      title: 'Confirm communications measurement points',
+      description:
+        '<p>Resolve the end-to-end latency measurement boundary before the OT-1 readiness review.</p>',
+      status: 'Monitoring',
+      observations: [
+        {
+          id: newId(),
+          text: '<p>Instrumentation working group has two candidate measurement-point definitions.</p>',
+          createdAt: ts,
+          modifiedAt: ts,
+          editorName: 'Demo Analyst',
+        },
+      ],
+      requirementIds: [r3],
+      sourceIds: [srdSourceId],
       createdAt: ts,
       modifiedAt: ts,
       editorName: 'Demo Analyst',
